@@ -1,3 +1,3 @@
 export default {
-    build: {chunkSizeWarningLimit: 2000}
+    build: {chunkSizeWarningLimit: 2000}, publicDir: "assets/out"
 }
