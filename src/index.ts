@@ -57,6 +57,20 @@ class Main extends Phaser.Scene {
   preload(): void {
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
+    this.load.json("level", "level.json")
+  }
+
+  createTerrain(): void {
+    const data = this.cache.json.get("level")
+    const w = data.spacing
+    const h0 = 1000
+    const points: number[][] = []
+    points.push([0, h0])
+    data.height.forEach((h: number, i: number) => {
+      points.push([i * w, -h])
+    })
+    points.push([(data.height.length - 1) * w, h0])
+    this.add.polygon(0, 20, points, 0xff888888).setOrigin(0, 0)
   }
 
   create(): void {
@@ -84,13 +98,7 @@ class Main extends Phaser.Scene {
       return burner
     })
     // Ground
-    this.add.rectangle(0, 20, 1000, 100, 0xff888888).setOrigin(0.5, 0)
-    for (let x = -500; x <= 500; x += 10) {
-      this.add
-        .line(x, 20, 0, 0, 0, 100, 0xff444444)
-        .setOrigin(0, 0)
-        .setLineWidth(0.1)
-    }
+    this.createTerrain()
     // Camera
     const camera = this.cameras.main
     camera.setZoom(Math.min(camera.width / 60, camera.height / 60))
@@ -138,10 +146,8 @@ class UI extends Phaser.Scene {
     this.input.keyboard!.on("keydown-SPACE", () => {
       const mainScene = this.scene.get("main").scene
       if (mainScene.isPaused()) {
-        console.log("resume")
         mainScene.resume()
       } else {
-        console.log("pause")
         mainScene.pause()
       }
     })
