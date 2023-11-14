@@ -50,6 +50,10 @@ class Main extends Phaser.Scene {
     controls: Phaser.Input.Keyboard.Key[]
   } | null = null
 
+  constructor() {
+    super({ key: "main" })
+  }
+
   preload(): void {
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
@@ -124,10 +128,30 @@ class Main extends Phaser.Scene {
   }
 }
 
+class UI extends Phaser.Scene {
+  constructor() {
+    super({ key: "ui" })
+  }
+
+  create(): void {
+    this.scene.launch("main")
+    this.input.keyboard!.on("keydown-SPACE", () => {
+      const mainScene = this.scene.get("main").scene
+      if (mainScene.isPaused()) {
+        console.log("resume")
+        mainScene.resume()
+      } else {
+        console.log("pause")
+        mainScene.pause()
+      }
+    })
+  }
+}
+
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
   backgroundColor: "#000000",
   width: 600,
   height: 600,
-  scene: Main,
+  scene: [UI, Main],
 })
