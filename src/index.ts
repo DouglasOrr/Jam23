@@ -1,15 +1,18 @@
 import * as Phaser from "phaser"
 
 const S = {
+  // Physics
   G: 5,
   thrust: 20,
   velocityDamping: 0.1,
   rotationRate: 4,
   rotationDamping: 1,
   lift: 0.1,
+  // View
+  fov: 60,
 }
 
-class Game {
+class Physics {
   control: [number, number, number] = [0, 0, 0]
   ship: [number, number] = [0, 0]
   shipV: [number, number] = [0, 0]
@@ -44,7 +47,7 @@ class Game {
 
 class Main extends Phaser.Scene {
   state: {
-    game: Game
+    physics: Physics
     ship: Phaser.GameObjects.Container
     burners: Phaser.GameObjects.Particles.ParticleEmitter[]
     controls: Phaser.Input.Keyboard.Key[]
@@ -101,7 +104,7 @@ class Main extends Phaser.Scene {
     this.createTerrain()
     // Camera
     const camera = this.cameras.main
-    camera.setZoom(Math.min(camera.width / 60, camera.height / 60))
+    camera.setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
     camera.setScroll(-camera.width / 2, -camera.height / 2)
     camera.startFollow(ship, false, 0.05, 0.05)
     // Control
@@ -113,7 +116,7 @@ class Main extends Phaser.Scene {
     const controls = keys.map((key) => this.input.keyboard!.addKey(key))
     // State
     this.state = {
-      game: new Game(),
+      physics: new Physics(),
       ship,
       burners,
       controls,
@@ -123,12 +126,12 @@ class Main extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.state !== null) {
       const s = this.state
-      s.game.control[0] = +s.controls[0].isDown
-      s.game.control[1] = +s.controls[1].isDown
-      s.game.control[2] = +s.controls[2].isDown
-      s.game.update(delta / 1000)
-      s.ship.setPosition(s.game.ship[0], s.game.ship[1])
-      s.ship.setRotation(s.game.shipO)
+      s.physics.control[0] = +s.controls[0].isDown
+      s.physics.control[1] = +s.controls[1].isDown
+      s.physics.control[2] = +s.controls[2].isDown
+      s.physics.update(delta / 1000)
+      s.ship.setPosition(s.physics.ship[0], s.physics.ship[1])
+      s.ship.setRotation(s.physics.shipO)
       s.burners[0].emitting = s.controls[0].isDown
       s.burners[1].emitting = s.controls[1].isDown
       s.burners[2].emitting = s.controls[2].isDown
