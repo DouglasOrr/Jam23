@@ -2,22 +2,34 @@ import * as Phaser from "phaser"
 
 const S = {
   // Physics
-  G: 5,
-  thrust: 20,
-  velocityDamping: 0.1,
-  rotationRate: 4,
-  rotationDamping: 1,
+  G: 10,
+  thrust: 30,
+  velocityDamping: 0.07,
+  rotationRate: 5,
+  rotationDamping: 1.5,
   lift: 0.1,
   // View
-  fov: 60,
+  fov: 65,
+}
+
+interface LevelData {
+  spacing: number
+  height: number[]
 }
 
 class Physics {
-  control: [number, number, number] = [0, 0, 0]
-  ship: [number, number] = [0, 0]
+  terrain: number[]
+  ship: [number, number]
   shipV: [number, number] = [0, 0]
   shipO: number = Math.PI
   shipOV: number = 0
+  control: [number, number, number] = [0, 0, 0]
+
+  constructor(level: LevelData) {
+    const r0 = (level.height.length * level.spacing) / (2 * Math.PI)
+    this.terrain = level.height.map((h: number) => r0 + h)
+    this.ship = [0, -this.terrain[0] - 10]
+  }
 
   update(dt: number): void {
     // Orientation
@@ -27,18 +39,19 @@ class Physics {
         S.rotationDamping * this.shipOV)
     this.shipO += dt * this.shipOV
     // Velocity
-    const cosO = Math.cos(this.shipO)
+    const r = Math.sqrt(this.ship[0] ** 2 + this.ship[1] ** 2)
+    const sinA = this.ship[0] / r
+    const cosA = this.ship[1] / r
     const sinO = -Math.sin(this.shipO)
-    const dotp = this.shipV[0] * sinO + this.shipV[1] * cosO
+    const cosO = Math.cos(this.shipO)
     const thrust =
       (S.thrust * (this.control[0] - 2 * this.control[1] + this.control[2])) / 2
-    this.shipV[0] += dt * (thrust * sinO - S.velocityDamping * this.shipV[0])
-    this.shipV[1] +=
-      dt *
-      (S.G +
-        thrust * cosO -
-        S.lift * Math.abs(sinO) * Math.max(dotp, 0) -
-        S.velocityDamping * this.shipV[1])
+    const up =
+      -S.G + S.lift * Math.max(this.shipV[0] * sinO + this.shipV[1] * cosO, 0)
+    const speed = Math.sqrt(this.shipV[0] ** 2 + this.shipV[1] ** 2)
+    const drag = S.velocityDamping * speed
+    this.shipV[0] += dt * (up * sinA + thrust * sinO - drag * this.shipV[0])
+    this.shipV[1] += dt * (up * cosA + thrust * cosO - drag * this.shipV[1])
     // Position
     this.ship[0] += dt * this.shipV[0]
     this.ship[1] += dt * this.shipV[1]
@@ -63,22 +76,19 @@ class Main extends Phaser.Scene {
     this.load.json("level", "level.json")
   }
 
-  createTerrain(): void {
-    const data = this.cache.json.get("level")
-    const w = data.spacing
-    const h0 = 1000
-    const points: number[][] = []
-    points.push([0, h0])
-    data.height.forEach((h: number, i: number) => {
-      points.push([i * w, -h])
+  createTerrain(physics: Physics): void {
+    const xy: number[][] = []
+    physics.terrain.forEach((r: number, i: number) => {
+      const theta = (2 * Math.PI * i) / physics.terrain.length
+      xy.push([r * Math.sin(theta), -r * Math.cos(theta)])
     })
-    points.push([(data.height.length - 1) * w, h0])
-    this.add.polygon(0, 20, points, 0xff888888).setOrigin(0, 0)
+    this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
   }
 
   create(): void {
+    const physics = new Physics(this.cache.json.get("level"))
     // Ship
-    const ship = this.add.container(0, 0, [
+    const ship = this.add.container(physics.ship[0], physics.ship[1], [
       this.add
         .image(0, 0, "ship")
         .setOrigin(0.5, 0.5)
@@ -101,7 +111,7 @@ class Main extends Phaser.Scene {
       return burner
     })
     // Ground
-    this.createTerrain()
+    this.createTerrain(physics)
     // Camera
     const camera = this.cameras.main
     camera.setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
@@ -116,14 +126,14 @@ class Main extends Phaser.Scene {
     const controls = keys.map((key) => this.input.keyboard!.addKey(key))
     // State
     this.state = {
-      physics: new Physics(),
+      physics,
       ship,
       burners,
       controls,
     }
   }
 
-  update(time: number, delta: number): void {
+  update(_time: number, delta: number): void {
     if (this.state !== null) {
       const s = this.state
       s.physics.control[0] = +s.controls[0].isDown
@@ -135,6 +145,11 @@ class Main extends Phaser.Scene {
       s.burners[0].emitting = s.controls[0].isDown
       s.burners[1].emitting = s.controls[1].isDown
       s.burners[2].emitting = s.controls[2].isDown
+      const camera = this.cameras.main
+      const rotation =
+        Math.atan2(s.physics.ship[0], s.physics.ship[1]) + Math.PI
+      camera.setRotation(rotation)
+      camera.setFollowOffset(-10 * Math.sin(rotation), -10 * Math.cos(rotation))
     }
   }
 }
