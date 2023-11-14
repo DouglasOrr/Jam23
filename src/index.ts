@@ -8,6 +8,7 @@ const S = {
   rotationRate: 5,
   rotationDamping: 1.5,
   lift: 0.1,
+  shipSize: 2,
   // View
   fov: 65,
 }
@@ -23,15 +24,35 @@ class Physics {
   shipV: [number, number] = [0, 0]
   shipO: number = Math.PI
   shipOV: number = 0
+  shipExplode: boolean = false
   control: [number, number, number] = [0, 0, 0]
 
   constructor(level: LevelData) {
     const r0 = (level.height.length * level.spacing) / (2 * Math.PI)
     this.terrain = level.height.map((h: number) => r0 + h)
+    this.terrain.push(this.terrain[0]) // wrap-around (easier hit detection)
     this.ship = [0, -this.terrain[0] - 10]
   }
 
+  getTerrainHeight(position: [number, number]): number {
+    let offset = Math.atan2(position[0], -position[1]) / (2 * Math.PI)
+    offset = (this.terrain.length - 1) * (offset + +(offset < 0))
+    const i0 = Math.floor(offset)
+    const i1 = i0 + 1
+    return (i1 - offset) * this.terrain[i0] + (offset - i0) * this.terrain[i1]
+  }
+
   update(dt: number): void {
+    // State
+    const r = Math.sqrt(this.ship[0] ** 2 + this.ship[1] ** 2)
+    const sinA = this.ship[0] / r
+    const cosA = this.ship[1] / r
+    if (r < this.getTerrainHeight(this.ship) + S.shipSize / 2) {
+      this.shipExplode = true
+    }
+    if (this.shipExplode) {
+      return
+    }
     // Orientation
     this.shipOV +=
       dt *
@@ -39,9 +60,6 @@ class Physics {
         S.rotationDamping * this.shipOV)
     this.shipO += dt * this.shipOV
     // Velocity
-    const r = Math.sqrt(this.ship[0] ** 2 + this.ship[1] ** 2)
-    const sinA = this.ship[0] / r
-    const cosA = this.ship[1] / r
     const sinO = -Math.sin(this.shipO)
     const cosO = Math.cos(this.shipO)
     const thrust =
@@ -79,7 +97,7 @@ class Main extends Phaser.Scene {
   createTerrain(physics: Physics): void {
     const xy: number[][] = []
     physics.terrain.forEach((r: number, i: number) => {
-      const theta = (2 * Math.PI * i) / physics.terrain.length
+      const theta = (2 * Math.PI * i) / (physics.terrain.length - 1)
       xy.push([r * Math.sin(theta), -r * Math.cos(theta)])
     })
     this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
@@ -92,7 +110,7 @@ class Main extends Phaser.Scene {
       this.add
         .image(0, 0, "ship")
         .setOrigin(0.5, 0.5)
-        .setScale(1 / 128)
+        .setScale(S.shipSize / 256)
         .setFlipY(true),
     ])
     const offs = [1, 0, -1]
@@ -134,17 +152,32 @@ class Main extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.state !== null) {
+    if (this.state !== null && !this.state.physics.shipExplode) {
       const s = this.state
       s.physics.control[0] = +s.controls[0].isDown
       s.physics.control[1] = +s.controls[1].isDown
       s.physics.control[2] = +s.controls[2].isDown
       s.physics.update(delta / 1000)
-      s.ship.setPosition(s.physics.ship[0], s.physics.ship[1])
-      s.ship.setRotation(s.physics.shipO)
-      s.burners[0].emitting = s.controls[0].isDown
-      s.burners[1].emitting = s.controls[1].isDown
-      s.burners[2].emitting = s.controls[2].isDown
+
+      if (s.physics.shipExplode) {
+        s.ship.destroy()
+        this.add.particles(s.physics.ship[0], s.physics.ship[1], "smoke", {
+          blendMode: "ADD",
+          lifespan: 500,
+          speed: 11,
+          frequency: 1,
+          duration: 350,
+          scale: { start: 0.01, end: 0.06, ease: "cube.out" },
+          alpha: { start: 0.4, end: 0, ease: "cube.out" },
+        })
+      } else {
+        s.ship.setPosition(s.physics.ship[0], s.physics.ship[1])
+        s.ship.setRotation(s.physics.shipO)
+        s.burners[0].emitting = s.controls[0].isDown
+        s.burners[1].emitting = s.controls[1].isDown
+        s.burners[2].emitting = s.controls[2].isDown
+      }
+
       const camera = this.cameras.main
       const rotation =
         Math.atan2(s.physics.ship[0], s.physics.ship[1]) + Math.PI
