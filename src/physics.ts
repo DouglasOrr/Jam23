@@ -27,6 +27,10 @@ export const S = {
   shipSize: 2,
   // Turret
   turretRotationRate: 0.5,
+  turretReloadTime: 0.75,
+  bulletSpeed: 20,
+  bulletRange: 80,
+  maxBullets: 100,
 }
 
 export class Planet {
@@ -48,9 +52,61 @@ export class Planet {
   }
 }
 
+export class Bullets {
+  position: Vec2[] = []
+  velocity: Vec2[] = []
+  timeToLive: number[] = []
+
+  constructor() {
+    for (let i = 0; i < S.maxBullets; ++i) {
+      this.position.push([0, 0])
+      this.velocity.push([0, 0])
+      this.timeToLive.push(0)
+    }
+  }
+
+  #bulletIndex(): number {
+    let lowestTimeToLiveIndex = 0
+    let lowestTimeToLive = this.timeToLive[0]
+    for (let i = 0; i < this.timeToLive.length; ++i) {
+      if (this.timeToLive[i] <= 0) {
+        return i
+      }
+      if (this.timeToLive[i] < lowestTimeToLive) {
+        lowestTimeToLive = this.timeToLive[i]
+        lowestTimeToLiveIndex = i
+      }
+    }
+    return lowestTimeToLiveIndex
+  }
+
+  fire(position: Vec2, angle: number): void {
+    const index = this.#bulletIndex()
+    this.position[index][0] = position[0]
+    this.position[index][1] = position[1]
+    this.velocity[index][0] = S.bulletSpeed * Math.sin(angle)
+    this.velocity[index][1] = S.bulletSpeed * -Math.cos(angle)
+    this.timeToLive[index] = S.bulletRange / S.bulletSpeed
+    // TODO: detect max TTL based on terrain (to "fake out" terrain collision)
+  }
+
+  update(dt: number): void {
+    for (let i = 0; i < S.maxBullets; ++i) {
+      if (0 < this.timeToLive[i]) {
+        const position = this.position[i]
+        const velocity = this.velocity[i]
+        position[0] += dt * velocity[0]
+        position[1] += dt * velocity[1]
+        this.timeToLive[i] -= dt
+      }
+    }
+  }
+}
+
 export class Turrets {
   position: Vec2[] = []
   angle: number[] = []
+  reload: number[] = []
 
   constructor(surfacePosition: Vec2[], planet: Planet) {
     surfacePosition.forEach(([d, h]) => {
@@ -60,11 +116,13 @@ export class Turrets {
         -(planet.radius + h) * Math.cos(angle),
       ])
       this.angle.push(angle)
+      this.reload.push(S.turretReloadTime)
     })
   }
 
   update(sim: Sim, dt: number): void {
     this.position.forEach((position, i) => {
+      // Aim
       const shipPosition = sim.ships.position[0] // TODO: target selection
       const targetAngle = Math.atan2(
         shipPosition[0] - position[0],
@@ -73,6 +131,12 @@ export class Turrets {
       const da = targetAngle - this.angle[i]
       this.angle[i] +=
         Math.min(Math.abs(da), dt * S.turretRotationRate) * Math.sign(da)
+      // Fire
+      this.reload[i] -= dt
+      if (this.reload[i] <= 0) {
+        sim.bullets.fire(position, this.angle[i])
+        this.reload[i] += S.turretReloadTime
+      }
     })
   }
 }
@@ -148,6 +212,7 @@ export class Ships {
 export class Sim {
   planet: Planet
   turrets: Turrets
+  bullets: Bullets = new Bullets()
   ships: Ships = new Ships()
 
   constructor(level: LevelData) {
@@ -156,10 +221,37 @@ export class Sim {
     this.ships.add([0, -this.planet.height[0] - 10])
   }
 
+  #detectCollisions(events: Events): void {
+    // Exhaustive search, for now
+    for (let shipI = 0; shipI < this.ships.position.length; ++shipI) {
+      if (this.ships.alive[shipI]) {
+        const ship = this.ships.position[shipI]
+        for (
+          let bulletI = 0;
+          bulletI < this.bullets.position.length;
+          ++bulletI
+        ) {
+          if (0 < this.bullets.timeToLive[bulletI]) {
+            const bullet = this.bullets.position[bulletI]
+            const distanceSq =
+              (ship[0] - bullet[0]) ** 2 + (ship[1] - bullet[1]) ** 2
+            if (distanceSq < S.shipSize ** 2) {
+              this.ships.alive[shipI] = false
+              this.bullets.timeToLive[bulletI] = 0
+              events.explosions.push(ship)
+            }
+          }
+        }
+      }
+    }
+  }
+
   update(dt: number): Events {
     const events: Events = { explosions: [] }
     this.ships.update(this, dt, events)
     this.turrets.update(this, dt)
+    this.bullets.update(dt)
+    this.#detectCollisions(events)
     return events
   }
 }

@@ -5,6 +5,7 @@ import * as Physics from "./physics"
 
 const S = {
   fov: 65,
+  bulletRadius: 0.2,
 }
 
 interface SimUpdate {
@@ -74,6 +75,25 @@ class Turret implements SimUpdate {
   }
 }
 
+class Bullets implements SimUpdate {
+  bullets: Phaser.GameObjects.Shape[] = []
+
+  constructor(scene: Phaser.Scene, sim: Physics.Sim) {
+    for (let i = 0; i < sim.bullets.position.length; ++i) {
+      this.bullets.push(scene.add.circle(0, 0, S.bulletRadius, 0xffffffff))
+    }
+  }
+
+  update(sim: Physics.Sim): void {
+    for (let i = 0; i < sim.bullets.position.length; ++i) {
+      const bullet = this.bullets[i]
+      bullet.setVisible(0 < sim.bullets.timeToLive[i])
+      const position = sim.bullets.position[i]
+      bullet.setPosition(position[0], position[1])
+    }
+  }
+}
+
 export default class Game extends Phaser.Scene {
   sim?: Physics.Sim
   updaters: SimUpdate[] = []
@@ -97,7 +117,7 @@ export default class Game extends Phaser.Scene {
     const ship = this.add.existing(new Ship(this, this.sim, 0))
     this.updaters.push(ship)
 
-    // Ground
+    // Level
     for (let i = 0; i < this.sim.turrets.position.length; ++i) {
       this.updaters.push(new Turret(this, this.sim, i))
     }
@@ -107,6 +127,7 @@ export default class Game extends Phaser.Scene {
       xy.push([r * Math.sin(theta), -r * Math.cos(theta)])
     })
     this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
+    this.updaters.push(new Bullets(this, this.sim))
 
     // Camera
     const camera = this.cameras.main
