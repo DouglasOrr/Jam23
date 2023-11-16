@@ -1,7 +1,7 @@
 import * as Phaser from "phaser"
 
 const S = {
-  // Physics
+  // Ship
   G: 10,
   thrust: 30,
   velocityDamping: 0.07,
@@ -9,6 +9,8 @@ const S = {
   rotationDamping: 1.5,
   lift: 0.1,
   shipSize: 2,
+  // Turret
+  turretRotationRate: 0.5,
   // View
   fov: 65,
 }
@@ -16,10 +18,13 @@ const S = {
 interface LevelData {
   spacing: number
   height: number[]
+  turrets: Array<[number, number]>
 }
 
 class Physics {
-  terrain: number[]
+  terrain: number[] // height (around the circle)
+  turrets: Array<[number, number]>
+  turretsAngle: number[]
   ship: [number, number]
   shipV: [number, number] = [0, 0]
   shipO: number = Math.PI
@@ -32,6 +37,16 @@ class Physics {
     this.terrain = level.height.map((h: number) => r0 + h)
     this.terrain.push(this.terrain[0]) // wrap-around (easier hit detection)
     this.ship = [0, -this.terrain[0] - 10]
+    this.turrets = []
+    this.turretsAngle = []
+    level.turrets.forEach(([d, h]) => {
+      const angle = (2 * Math.PI * d) / (level.height.length * level.spacing)
+      this.turrets.push([
+        (r0 + h) * Math.sin(angle),
+        -(r0 + h) * Math.cos(angle),
+      ])
+      this.turretsAngle.push(angle)
+    })
   }
 
   getTerrainHeight(position: [number, number]): number {
@@ -42,7 +57,7 @@ class Physics {
     return (i1 - offset) * this.terrain[i0] + (offset - i0) * this.terrain[i1]
   }
 
-  update(dt: number): void {
+  updateShip(dt: number): void {
     // State
     const r = Math.sqrt(this.ship[0] ** 2 + this.ship[1] ** 2)
     const sinA = this.ship[0] / r
@@ -74,12 +89,30 @@ class Physics {
     this.ship[0] += dt * this.shipV[0]
     this.ship[1] += dt * this.shipV[1]
   }
+
+  updateTurrets(dt: number): void {
+    this.turrets.forEach((turret, i) => {
+      const targetAngle = Math.atan2(
+        this.ship[0] - turret[0],
+        -(this.ship[1] - turret[1]),
+      )
+      const da = targetAngle - this.turretsAngle[i]
+      this.turretsAngle[i] +=
+        Math.min(Math.abs(da), dt * S.turretRotationRate) * Math.sign(da)
+    })
+  }
+
+  update(dt: number): void {
+    this.updateShip(dt)
+    this.updateTurrets(dt)
+  }
 }
 
 class Main extends Phaser.Scene {
   state: {
     physics: Physics
     ship: Phaser.GameObjects.Container
+    turretGuns: Phaser.GameObjects.Line[]
     burners: Phaser.GameObjects.Particles.ParticleEmitter[]
     controls: Phaser.Input.Keyboard.Key[]
   } | null = null
@@ -94,13 +127,27 @@ class Main extends Phaser.Scene {
     this.load.json("level", "level.json")
   }
 
-  createTerrain(physics: Physics): void {
+  createTerrain(physics: Physics): Phaser.GameObjects.Line[] {
+    // Turrets
+    const turretGuns: Phaser.GameObjects.Line[] = []
+    physics.turrets.forEach((x, i) => {
+      this.add.circle(x[0], x[1], 1, 0xffffffff)
+      turretGuns.push(
+        this.add
+          .line(x[0], x[1], 0, 0, 0, -1.75, 0xffffffff)
+          .setRotation(physics.turretsAngle[i])
+          .setLineWidth(0.2)
+          .setOrigin(0, 0),
+      )
+    })
+    // Ground
     const xy: number[][] = []
     physics.terrain.forEach((r: number, i: number) => {
       const theta = (2 * Math.PI * i) / (physics.terrain.length - 1)
       xy.push([r * Math.sin(theta), -r * Math.cos(theta)])
     })
     this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
+    return turretGuns
   }
 
   create(): void {
@@ -129,7 +176,7 @@ class Main extends Phaser.Scene {
       return burner
     })
     // Ground
-    this.createTerrain(physics)
+    const turretGuns = this.createTerrain(physics)
     // Camera
     const camera = this.cameras.main
     camera.setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
@@ -146,6 +193,7 @@ class Main extends Phaser.Scene {
     this.state = {
       physics,
       ship,
+      turretGuns,
       burners,
       controls,
     }
@@ -176,6 +224,9 @@ class Main extends Phaser.Scene {
         s.burners[0].emitting = s.controls[0].isDown
         s.burners[1].emitting = s.controls[1].isDown
         s.burners[2].emitting = s.controls[2].isDown
+        s.physics.turretsAngle.forEach((angle, i) => {
+          s.turretGuns[i].setRotation(angle)
+        })
       }
 
       const camera = this.cameras.main
