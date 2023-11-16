@@ -245,12 +245,23 @@ class UI extends Phaser.Scene {
 
   create(): void {
     this.scene.launch("main")
+    this.scene.bringToTop()
+    const camera = this.cameras.main
+    const pausedText = this.add
+      .text(camera.displayWidth / 2, camera.displayHeight / 2, "paused", {
+        color: "#fff",
+        fontSize: "2em",
+      })
+      .setOrigin(0.5, 0.5)
+      .setVisible(false)
     this.input.keyboard!.on("keydown-SPACE", () => {
       const mainScene = this.scene.get("main").scene
       if (mainScene.isPaused()) {
         mainScene.resume()
+        pausedText.setVisible(false)
       } else {
         mainScene.pause()
+        pausedText.setVisible(true)
       }
     })
   }
