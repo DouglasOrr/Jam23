@@ -6,12 +6,16 @@ test("basic Physics.Sim", () => {
     spacing: 10,
     turrets: [[20, 10]],
   })
+
   // First step is fine
-  sim.update(0.1)
-  expect(sim.shipExplode).toBe(false)
-  // No input for 5s, should die by gravity
-  for (let i = 0; i < 50; ++i) {
-    sim.update(0.1)
+  expect(sim.update(0.1).explosions).toHaveLength(0)
+
+  // No input for 5s -> ship should die by gravity
+  let explosions: Physics.Vec2[] = []
+  for (let i = 0; i < 50 && explosions.length === 0; ++i) {
+    explosions = sim.update(0.1).explosions
   }
-  expect(sim.shipExplode).toBe(true)
+  expect(explosions.length).toBe(1)
+  expect(explosions[0]).toMatchObject(sim.ships.position[0])
+  expect(sim.ships.alive[0]).toBe(false)
 })

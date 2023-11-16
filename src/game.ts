@@ -29,20 +29,20 @@ export default class Game extends Phaser.Scene {
   createTerrain(physics: Physics.Sim): Phaser.GameObjects.Line[] {
     // Turrets
     const turretGuns: Phaser.GameObjects.Line[] = []
-    physics.turrets.forEach((x, i) => {
+    physics.turrets.position.forEach((x, i) => {
       this.add.circle(x[0], x[1], 1, 0xffffffff)
       turretGuns.push(
         this.add
           .line(x[0], x[1], 0, 0, 0, -1.75, 0xffffffff)
-          .setRotation(physics.turretsAngle[i])
+          .setRotation(physics.turrets.angle[i])
           .setLineWidth(0.2)
           .setOrigin(0, 0),
       )
     })
     // Ground
     const xy: number[][] = []
-    physics.terrain.forEach((r: number, i: number) => {
-      const theta = (2 * Math.PI * i) / (physics.terrain.length - 1)
+    physics.planet.height.forEach((r: number, i: number) => {
+      const theta = (2 * Math.PI * i) / (physics.planet.height.length - 1)
       xy.push([r * Math.sin(theta), -r * Math.cos(theta)])
     })
     this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
@@ -52,7 +52,8 @@ export default class Game extends Phaser.Scene {
   create(): void {
     const physics = new Physics.Sim(this.cache.json.get("level"))
     // Ship
-    const ship = this.add.container(physics.ship[0], physics.ship[1], [
+    const shipPosition = physics.ships.position[0]
+    const ship = this.add.container(shipPosition[0], shipPosition[1], [
       this.add
         .image(0, 0, "ship")
         .setOrigin(0.5, 0.5)
@@ -99,16 +100,17 @@ export default class Game extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.state !== null && !this.state.physics.shipExplode) {
+    if (this.state !== null) {
       const s = this.state
-      s.physics.control[0] = +s.controls[0].isDown
-      s.physics.control[1] = +s.controls[1].isDown
-      s.physics.control[2] = +s.controls[2].isDown
-      s.physics.update(delta / 1000)
+      const shipControl = s.physics.ships.control[0]
+      shipControl[0] = s.controls[0].isDown
+      shipControl[1] = s.controls[1].isDown
+      shipControl[2] = s.controls[2].isDown
 
-      if (s.physics.shipExplode) {
-        s.ship.destroy()
-        this.add.particles(s.physics.ship[0], s.physics.ship[1], "smoke", {
+      const events = s.physics.update(delta / 1000)
+
+      events.explosions.forEach((position) => {
+        this.add.particles(position[0], position[1], "smoke", {
           blendMode: "ADD",
           lifespan: 500,
           speed: 11,
@@ -117,20 +119,24 @@ export default class Game extends Phaser.Scene {
           scale: { start: 0.01, end: 0.06, ease: "cube.out" },
           alpha: { start: 0.4, end: 0, ease: "cube.out" },
         })
-      } else {
-        s.ship.setPosition(s.physics.ship[0], s.physics.ship[1])
-        s.ship.setRotation(s.physics.shipO)
-        s.burners[0].emitting = s.controls[0].isDown
-        s.burners[1].emitting = s.controls[1].isDown
-        s.burners[2].emitting = s.controls[2].isDown
-        s.physics.turretsAngle.forEach((angle, i) => {
-          s.turretGuns[i].setRotation(angle)
-        })
+      })
+
+      if (!s.physics.ships.alive[0]) {
+        s.ship.setVisible(false)
       }
+      const shipPosition = s.physics.ships.position[0]
+      s.ship.setPosition(shipPosition[0], shipPosition[1])
+      s.ship.setRotation(s.physics.ships.angle[0])
+      s.burners[0].emitting = s.physics.ships.control[0][0]
+      s.burners[1].emitting = s.physics.ships.control[0][1]
+      s.burners[2].emitting = s.physics.ships.control[0][2]
+
+      s.physics.turrets.angle.forEach((angle, i) => {
+        s.turretGuns[i].setRotation(angle)
+      })
 
       const camera = this.cameras.main
-      const rotation =
-        Math.atan2(s.physics.ship[0], s.physics.ship[1]) + Math.PI
+      const rotation = Math.atan2(shipPosition[0], shipPosition[1]) + Math.PI
       camera.setRotation(rotation)
       camera.setFollowOffset(-10 * Math.sin(rotation), -10 * Math.cos(rotation))
     }
