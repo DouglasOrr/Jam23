@@ -28,6 +28,7 @@ export const S = {
   // Turret
   turretRotationRate: 0.5,
   turretReloadTime: 0.75,
+  turretLength: 1.75,
   bulletSpeed: 20,
   bulletRange: 80,
   maxBullets: 100,
@@ -87,10 +88,9 @@ export class Bullets {
     this.velocity[index][0] = S.bulletSpeed * Math.sin(angle)
     this.velocity[index][1] = S.bulletSpeed * -Math.cos(angle)
     this.timeToLive[index] = S.bulletRange / S.bulletSpeed
-    // TODO: detect max TTL based on terrain (to "fake out" terrain collision)
   }
 
-  update(dt: number): void {
+  update(sim: Sim, dt: number): void {
     for (let i = 0; i < S.maxBullets; ++i) {
       if (0 < this.timeToLive[i]) {
         const position = this.position[i]
@@ -98,6 +98,12 @@ export class Bullets {
         position[0] += dt * velocity[0]
         position[1] += dt * velocity[1]
         this.timeToLive[i] -= dt
+
+        // Terrain collision
+        const height2 = position[0] ** 2 + position[1] ** 2
+        if (height2 < sim.planet.getHeight(position) ** 2) {
+          this.timeToLive[i] = 0
+        }
       }
     }
   }
@@ -134,7 +140,14 @@ export class Turrets {
       // Fire
       this.reload[i] -= dt
       if (this.reload[i] <= 0) {
-        sim.bullets.fire(position, this.angle[i])
+        const angle = this.angle[i]
+        sim.bullets.fire(
+          [
+            position[0] + S.turretLength * Math.sin(angle),
+            position[1] - S.turretLength * Math.cos(angle),
+          ],
+          angle,
+        )
         this.reload[i] += S.turretReloadTime
       }
     })
@@ -250,7 +263,7 @@ export class Sim {
     const events: Events = { explosions: [] }
     this.ships.update(this, dt, events)
     this.turrets.update(this, dt)
-    this.bullets.update(dt)
+    this.bullets.update(this, dt)
     this.#detectCollisions(events)
     return events
   }

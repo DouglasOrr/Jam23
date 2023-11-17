@@ -64,7 +64,15 @@ class Turret implements SimUpdate {
     const position = sim.turrets.position[this.index]
     scene.add.circle(position[0], position[1], 1, 0xffffffff)
     this.gun = scene.add
-      .line(position[0], position[1], 0, 0, 0, -1.75, 0xffffffff)
+      .line(
+        position[0],
+        position[1],
+        0,
+        0,
+        0,
+        -Physics.S.turretLength,
+        0xffffffff,
+      )
       .setRotation(sim.turrets.angle[this.index])
       .setLineWidth(0.2)
       .setOrigin(0, 0)
