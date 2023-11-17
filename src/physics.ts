@@ -19,8 +19,8 @@ export interface Events {
 export const S = {
   // Ship
   G: 10,
-  thrust: 30,
-  velocityDamping: 0.07,
+  thrust: 40,
+  velocityDamping: 0.08,
   rotationRate: 5,
   rotationDamping: 1.5,
   lift: 0.1,
