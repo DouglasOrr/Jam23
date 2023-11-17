@@ -29,6 +29,10 @@ class UI extends Phaser.Scene {
         pausedText.setVisible(true)
       }
     })
+    this.input.keyboard!.on("keydown-R", () => {
+      this.scene.get("game").scene.restart()
+      pausedText.setVisible(false)
+    })
   }
 }
 
