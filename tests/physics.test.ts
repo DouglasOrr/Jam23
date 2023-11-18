@@ -1,5 +1,15 @@
 import * as Physics from "../src/physics"
 
+test("rotateTowards", () => {
+  expect(Physics.rotateTowards(1, 1.3, 0.1)).toBeCloseTo(1.1)
+  expect(Physics.rotateTowards(1, 0.95, 0.1)).toBeCloseTo(0.95)
+  // Past discontinuity
+  expect(Physics.rotateTowards(3, -3, 0.1)).toBeCloseTo(3.1)
+  expect(Physics.rotateTowards(3, -3, 0.4)).toBeCloseTo(-3)
+  expect(Physics.rotateTowards(-3, 3, 0.1)).toBeCloseTo(-3.1)
+  expect(Physics.rotateTowards(-3, 3, 0.4)).toBeCloseTo(3)
+})
+
 test("basic Physics.Sim", () => {
   const sim = new Physics.Sim({
     height: [0, 0, 10, 10, 5, 5, 5, 5, 5],

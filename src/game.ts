@@ -23,7 +23,7 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
       this.scene.add
         .image(0, 0, "ship")
         .setOrigin(0.5, 0.5)
-        .setScale(Physics.S.shipSize / 256)
+        .setDisplaySize(Physics.S.shipSize, Physics.S.shipSize)
         .setFlipY(true),
     )
     const offs = [1, 0, -1]
@@ -57,12 +57,13 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
 
 class Turret implements SimUpdate {
   index: number
+  body: Phaser.GameObjects.Shape
   gun: Phaser.GameObjects.Line
 
   constructor(scene: Phaser.Scene, sim: Physics.Sim, index: number) {
     this.index = index
     const position = sim.turrets.position[this.index]
-    scene.add.circle(position[0], position[1], 1, 0xffffffff)
+    this.body = scene.add.circle(position[0], position[1], 1, 0xffffffff)
     this.gun = scene.add
       .line(
         position[0],
@@ -79,7 +80,10 @@ class Turret implements SimUpdate {
   }
 
   update(sim: Physics.Sim): void {
-    this.gun.setRotation(sim.turrets.angle[this.index])
+    this.body.setVisible(sim.turrets.alive[this.index])
+    this.gun
+      .setRotation(sim.turrets.angle[this.index])
+      .setVisible(sim.turrets.alive[this.index])
   }
 }
 
@@ -102,19 +106,46 @@ class Bullets implements SimUpdate {
   }
 }
 
+class Bombs implements SimUpdate {
+  bombs: Phaser.GameObjects.Sprite[] = []
+
+  constructor(scene: Phaser.Scene, sim: Physics.Sim) {
+    for (let i = 0; i < sim.bombs.position.length; ++i) {
+      this.bombs.push(
+        scene.add
+          .sprite(0, 0, "bomb")
+          .setDisplaySize(Physics.S.bombSize, Physics.S.bombSize),
+      )
+    }
+  }
+
+  update(sim: Physics.Sim): void {
+    for (let i = 0; i < sim.bombs.position.length; ++i) {
+      const position = sim.bombs.position[i]
+      const velocity = sim.bombs.velocity[i]
+      this.bombs[i]
+        .setVisible(0 < sim.bombs.timeToLive[i])
+        .setPosition(position[0], position[1])
+        .setRotation(Math.atan2(velocity[0], -velocity[1]))
+    }
+  }
+}
+
 export default class Game extends Phaser.Scene {
   sim?: Physics.Sim
   updaters: SimUpdate[] = []
   controls: Phaser.Input.Keyboard.Key[] = []
+  controlBomb?: Phaser.Input.Keyboard.Key
 
   constructor() {
     super({ key: "game" })
   }
 
   preload(): void {
+    this.load.json("level", "level.json")
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
-    this.load.json("level", "level.json")
+    this.load.image("bomb", "bomb.png")
   }
 
   create(): void {
@@ -136,6 +167,7 @@ export default class Game extends Phaser.Scene {
     })
     this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
     this.updaters.push(new Bullets(this, this.sim))
+    this.updaters.push(new Bombs(this, this.sim))
 
     // Camera
     const camera = this.cameras.main
@@ -150,6 +182,7 @@ export default class Game extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.RIGHT,
     ]
     this.controls = keys.map((key) => this.input.keyboard!.addKey(key))
+    this.controlBomb = this.input.keyboard!.addKey("x")
   }
 
   update(_time: number, delta: number): void {
@@ -158,6 +191,7 @@ export default class Game extends Phaser.Scene {
       shipControl[0] = this.controls[0].isDown
       shipControl[1] = this.controls[1].isDown
       shipControl[2] = this.controls[2].isDown
+      this.sim.ships.controlDropBomb[0] = this.controlBomb!.isDown
 
       const events = this.sim.update(delta / 1000)
 
