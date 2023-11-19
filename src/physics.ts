@@ -303,7 +303,7 @@ export class Ships {
         const sinA = -Math.sin(angle)
         const cosA = Math.cos(angle)
         const thrust =
-          (S.thrust * (+control.left - 2 * +control.retro + +control.right)) / 2
+          (S.thrust * (+control.left - +control.retro + +control.right)) / 2
         const up =
           -S.G + S.lift * Math.max(velocity[0] * sinA + velocity[1] * cosA, 0)
         const speed = Math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
