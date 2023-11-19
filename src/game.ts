@@ -39,7 +39,7 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
   #addBurner(
     kind: "left" | "right" | "retro",
   ): Phaser.GameObjects.Particles.ParticleEmitter {
-    const off = { left: -1, retro: 0, right: 1 }[kind]
+    const off = { left: 1, retro: 0, right: -1 }[kind]
     const angle =
       kind === "retro"
         ? { min: -180, max: 0 }
