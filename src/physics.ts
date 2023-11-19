@@ -19,6 +19,12 @@ function distanceSq(a: Vec2, b: Vec2): number {
   return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 }
 
+// Difference between angles in the range [-PI, PI]
+export function angleBetween(a: number, b: number): number {
+  const diff = Math.abs(b - a)
+  return Math.min(diff, 2 * Math.PI - diff)
+}
+
 export function rotateTowards(
   angle: number,
   targetAngle: number,
@@ -215,29 +221,46 @@ export class Turrets {
   update(sim: Sim, dt: number): void {
     this.position.forEach((position, i) => {
       if (this.alive[i]) {
-        // Aim
-        const shipPosition = sim.ships.position[0] // TODO: target selection
-        this.angle[i] = rotateTowards(
-          this.angle[i],
-          Math.atan2(
-            shipPosition[0] - position[0],
-            -(shipPosition[1] - position[1]),
-          ),
-          dt * S.turretRotationRate,
-        )
+        // Select target
+        let targetAngle: number | undefined
+        let targetScore: number | undefined
+        sim.ships.position.forEach((shipPosition, shipI) => {
+          if (sim.ships.alive[shipI]) {
+            const shipAngle = Math.atan2(
+              shipPosition[0] - position[0],
+              -(shipPosition[1] - position[1]),
+            )
+            // Magic number is a heuristic that trades of radians for distance
+            const shipScore =
+              Math.sqrt(distanceSq(position, shipPosition)) + 5 * shipAngle
+            if (targetScore === undefined || shipScore < targetScore) {
+              targetScore = shipScore
+              targetAngle = shipAngle
+            }
+          }
+        })
 
-        // Fire
-        this.reload[i] -= dt
-        if (this.reload[i] <= 0) {
-          const angle = this.angle[i]
-          sim.bullets.fire(
-            [
-              position[0] + S.turretLength * Math.sin(angle),
-              position[1] - S.turretLength * Math.cos(angle),
-            ],
-            angle,
+        if (targetAngle !== undefined) {
+          // Aim
+          this.angle[i] = rotateTowards(
+            this.angle[i],
+            targetAngle,
+            dt * S.turretRotationRate,
           )
-          this.reload[i] += S.turretReloadTime
+
+          // Fire
+          this.reload[i] -= dt
+          if (this.reload[i] <= 0) {
+            const angle = this.angle[i]
+            sim.bullets.fire(
+              [
+                position[0] + S.turretLength * Math.sin(angle),
+                position[1] - S.turretLength * Math.cos(angle),
+              ],
+              angle,
+            )
+            this.reload[i] += S.turretReloadTime
+          }
         }
       }
     })
