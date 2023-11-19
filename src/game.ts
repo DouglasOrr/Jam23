@@ -6,6 +6,7 @@ import * as Physics from "./physics"
 const S = {
   fov: 65,
   bulletRadius: 0.2,
+  friendlyAlpha: 0.6,
 }
 
 interface SimUpdate {
@@ -14,7 +15,9 @@ interface SimUpdate {
 
 class Ship extends Phaser.GameObjects.Container implements SimUpdate {
   index: number
-  burners: Phaser.GameObjects.Particles.ParticleEmitter[]
+  burnLeft: Phaser.GameObjects.Particles.ParticleEmitter
+  burnRight: Phaser.GameObjects.Particles.ParticleEmitter
+  burnRetro: Phaser.GameObjects.Particles.ParticleEmitter
 
   constructor(scene: Phaser.Scene, sim: Physics.Sim, index: number) {
     super(scene)
@@ -24,23 +27,34 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
         .image(0, 0, "ship")
         .setOrigin(0.5, 0.5)
         .setDisplaySize(Physics.S.shipSize, Physics.S.shipSize)
-        .setFlipY(true),
+        .setFlipY(true)
+        .setAlpha(this.index === 0 ? 1 : S.friendlyAlpha),
     )
-    const offs = [1, 0, -1]
-    this.burners = offs.map((off) => {
-      const angle =
-        off === 0 ? { min: -180, max: 0 } : { min: -90 + 10 * off, max: -90 }
-      return this.scene.add.particles(0.6 * off, -1.4, "smoke", {
-        lifespan: 400,
-        scale: { start: 0.02, end: 0.0, ease: "sine.in" },
-        angle,
-        speed: 15,
-        blendMode: "ADD",
-        frequency: 15,
-      })
-    })
-    this.add(this.burners)
+    this.burnLeft = this.#addBurner("left")
+    this.burnRight = this.#addBurner("right")
+    this.burnRetro = this.#addBurner("retro")
     this.update(sim)
+  }
+
+  #addBurner(
+    kind: "left" | "right" | "retro",
+  ): Phaser.GameObjects.Particles.ParticleEmitter {
+    const off = { left: -1, retro: 0, right: 1 }[kind]
+    const angle =
+      kind === "retro"
+        ? { min: -180, max: 0 }
+        : { min: -90 + 10 * off, max: -90 }
+    const emitter = this.scene.add.particles(0.6 * off, -1.4, "smoke", {
+      lifespan: 400,
+      scale: { start: 0.02, end: 0.0, ease: "sine.in" },
+      angle,
+      speed: 15,
+      blendMode: "ADD",
+      frequency: 15,
+      alpha: this.index === 0 ? 1 : S.friendlyAlpha,
+    })
+    this.add(emitter)
+    return emitter
   }
 
   update(sim: Physics.Sim): void {
@@ -49,9 +63,9 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
     this.setPosition(position[0], position[1])
     this.setRotation(sim.ships.angle[this.index])
     const control = sim.ships.control[this.index]
-    this.burners[0].emitting = control[0]
-    this.burners[1].emitting = control[1]
-    this.burners[2].emitting = control[2]
+    this.burnLeft.emitting = control.left
+    this.burnRight.emitting = control.right
+    this.burnRetro.emitting = control.retro
   }
 }
 
@@ -131,8 +145,37 @@ class Bombs implements SimUpdate {
   }
 }
 
+class KeyboardControl implements SimUpdate {
+  index: number
+  controls: {
+    left: Phaser.Input.Keyboard.Key
+    right: Phaser.Input.Keyboard.Key
+    retro: Phaser.Input.Keyboard.Key
+    dropBomb: Phaser.Input.Keyboard.Key
+  }
+
+  constructor(keyboard: Phaser.Input.Keyboard.KeyboardPlugin, index: number) {
+    this.index = index
+    this.controls = {
+      left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
+      right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
+      retro: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+      dropBomb: keyboard.addKey("x"),
+    }
+  }
+
+  update(sim: Physics.Sim): void {
+    const shipControl = sim.ships.control[this.index]
+    shipControl.left = this.controls.left.isDown
+    shipControl.right = this.controls.right.isDown
+    shipControl.retro = this.controls.retro.isDown
+    shipControl.dropBomb = this.controls.dropBomb.isDown
+  }
+}
+
 export default class Game extends Phaser.Scene {
   sim?: Physics.Sim
+  controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
   controls: Phaser.Input.Keyboard.Key[] = []
   controlBomb?: Phaser.Input.Keyboard.Key
@@ -150,11 +193,14 @@ export default class Game extends Phaser.Scene {
 
   create(): void {
     this.sim = new Physics.Sim(this.cache.json.get("level"))
+    this.controllers = []
+    this.updaters = []
 
     // Ship
-    this.updaters = []
-    const ship = this.add.existing(new Ship(this, this.sim, 0))
-    this.updaters.push(ship)
+    const ships = this.sim.ships.position.map((_, i) =>
+      this.add.existing(new Ship(this, this.sim!, i)),
+    )
+    this.updaters.push(...ships)
 
     // Level
     for (let i = 0; i < this.sim.turrets.position.length; ++i) {
@@ -169,32 +215,24 @@ export default class Game extends Phaser.Scene {
     this.updaters.push(new Bullets(this, this.sim))
     this.updaters.push(new Bombs(this, this.sim))
 
+    // Control
+    this.sim.ships.position.forEach((_, i) => {
+      this.controllers.push(new KeyboardControl(this.input.keyboard!, i))
+    })
+
     // Camera
     const camera = this.cameras.main
     camera.setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
     camera.setScroll(-camera.width / 2, -camera.height / 2)
-    camera.startFollow(ship, false, 0.05, 0.05)
-
-    // Control
-    const keys = [
-      Phaser.Input.Keyboard.KeyCodes.LEFT,
-      Phaser.Input.Keyboard.KeyCodes.DOWN,
-      Phaser.Input.Keyboard.KeyCodes.RIGHT,
-    ]
-    this.controls = keys.map((key) => this.input.keyboard!.addKey(key))
-    this.controlBomb = this.input.keyboard!.addKey("x")
+    camera.startFollow(ships[0], false, 0.05, 0.05)
   }
 
   update(_time: number, delta: number): void {
     if (this.sim !== undefined) {
-      const shipControl = this.sim.ships.control[0]
-      shipControl[0] = this.controls[0].isDown
-      shipControl[1] = this.controls[1].isDown
-      shipControl[2] = this.controls[2].isDown
-      this.sim.ships.controlDropBomb[0] = this.controlBomb!.isDown
-
+      this.controllers.forEach((x) => {
+        x.update(this.sim!)
+      })
       const events = this.sim.update(delta / 1000)
-
       this.updaters.forEach((x) => {
         x.update(this.sim!)
       })

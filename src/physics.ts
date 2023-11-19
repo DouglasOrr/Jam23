@@ -8,6 +8,7 @@ export interface LevelData {
   spacing: number
   height: number[]
   turrets: Vec2[]
+  friendlies: number
 }
 
 export interface Events {
@@ -243,6 +244,13 @@ export class Turrets {
   }
 }
 
+export class ShipControl {
+  left: boolean = false
+  right: boolean = false
+  retro: boolean = false
+  dropBomb: boolean = false
+}
+
 export class Ships {
   position: Vec2[] = []
   velocity: Vec2[] = []
@@ -250,8 +258,7 @@ export class Ships {
   angularVelocity: number[] = []
   reload: number[] = []
   alive: boolean[] = []
-  control: Array<[boolean, boolean, boolean]> = []
-  controlDropBomb: boolean[] = []
+  control: ShipControl[] = []
 
   add(position: Vec2): void {
     this.position.push(position)
@@ -260,8 +267,7 @@ export class Ships {
     this.angularVelocity.push(0)
     this.reload.push(0)
     this.alive.push(true)
-    this.control.push([false, false, false])
-    this.controlDropBomb.push(false)
+    this.control.push(new ShipControl())
   }
 
   update(sim: Sim, dt: number, events: Events): void {
@@ -287,7 +293,7 @@ export class Ships {
         let angularVelocity = this.angularVelocity[i]
         angularVelocity +=
           dt *
-          (S.rotationRate * (+control[0] - +control[2]) -
+          (S.rotationRate * (+control.left - +control.right) -
             S.rotationDamping * angularVelocity)
         angle += dt * angularVelocity
         this.angularVelocity[i] = angularVelocity
@@ -297,7 +303,7 @@ export class Ships {
         const sinA = -Math.sin(angle)
         const cosA = Math.cos(angle)
         const thrust =
-          (S.thrust * (+control[0] - 2 * +control[1] + +control[2])) / 2
+          (S.thrust * (+control.left - 2 * +control.retro + +control.right)) / 2
         const up =
           -S.G + S.lift * Math.max(velocity[0] * sinA + velocity[1] * cosA, 0)
         const speed = Math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
@@ -313,7 +319,7 @@ export class Ships {
 
         // Drop bomb
         this.reload[i] -= dt
-        if (this.controlDropBomb[i] && this.reload[i] < 0) {
+        if (control.dropBomb && this.reload[i] < 0) {
           sim.bombs.fire(this.position[i], this.velocity[i])
           this.reload[i] = S.shipReloadTime
         }
@@ -332,7 +338,11 @@ export class Sim {
   constructor(level: LevelData) {
     this.planet = new Planet(level)
     this.turrets = new Turrets(level.turrets, this.planet)
-    this.ships.add([0, -this.planet.height[0] - 10])
+    const height = -this.planet.height[0] - 10
+    this.ships.add([0, height])
+    for (let i = 0; i < level.friendlies; ++i) {
+      this.ships.add([-5 * (i + 1), height])
+    }
   }
 
   #detectCollisions(events: Events): void {
