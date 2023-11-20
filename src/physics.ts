@@ -21,8 +21,10 @@ function distanceSq(a: Vec2, b: Vec2): number {
 
 // Difference between angles in the range [-PI, PI]
 export function angleBetween(a: number, b: number): number {
-  const diff = Math.abs(b - a)
-  return Math.min(diff, 2 * Math.PI - diff)
+  let diff = b - a
+  if (diff > Math.PI) diff -= 2 * Math.PI
+  if (diff < -Math.PI) diff += 2 * Math.PI
+  return diff
 }
 
 export function rotateTowards(
@@ -232,7 +234,8 @@ export class Turrets {
             )
             // Magic number is a heuristic that trades of radians for distance
             const shipScore =
-              Math.sqrt(distanceSq(position, shipPosition)) + 5 * shipAngle
+              Math.sqrt(distanceSq(position, shipPosition)) +
+              5 * Math.abs(angleBetween(this.angle[i], shipAngle))
             if (targetScore === undefined || shipScore < targetScore) {
               targetScore = shipScore
               targetAngle = shipAngle
@@ -319,6 +322,7 @@ export class Ships {
           (S.rotationRate * (+control.left - +control.right) -
             S.rotationDamping * angularVelocity)
         angle += dt * angularVelocity
+        angle += +(Math.abs(angle) > Math.PI) * -Math.sign(angle) * 2 * Math.PI
         this.angularVelocity[i] = angularVelocity
         this.angle[i] = angle
 

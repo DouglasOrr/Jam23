@@ -2,6 +2,7 @@
 
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
+import * as Agent from "./agent"
 
 const S = {
   fov: 65,
@@ -154,8 +155,9 @@ class KeyboardControl implements SimUpdate {
     dropBomb: Phaser.Input.Keyboard.Key
   }
 
-  constructor(keyboard: Phaser.Input.Keyboard.KeyboardPlugin, index: number) {
+  constructor(scene: Phaser.Scene, index: number) {
     this.index = index
+    const keyboard = scene.input.keyboard!
     this.controls = {
       left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
       right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
@@ -216,9 +218,10 @@ export default class Game extends Phaser.Scene {
     this.updaters.push(new Bombs(this, this.sim))
 
     // Control
-    this.sim.ships.position.forEach((_, i) => {
-      this.controllers.push(new KeyboardControl(this.input.keyboard!, i))
-    })
+    this.controllers.push(new KeyboardControl(this, 0))
+    for (let i = 1; i < this.sim.ships.position.length; ++i) {
+      this.controllers.push(new Agent.ScriptAgent(i, 0, [-5 * i, 2]))
+    }
 
     // Camera
     const camera = this.cameras.main

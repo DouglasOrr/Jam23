@@ -2,9 +2,9 @@ import * as Physics from "../src/physics"
 
 test("angleBetween", () => {
   expect(Physics.angleBetween(2, 2.5)).toBeCloseTo(0.5)
-  expect(Physics.angleBetween(2.5, 2)).toBeCloseTo(0.5)
-  expect(Physics.angleBetween(Math.PI - 0.1, Math.PI + 0.2)).toBeCloseTo(0.3)
-  expect(Physics.angleBetween(Math.PI + 0.2, Math.PI - 0.1)).toBeCloseTo(0.3)
+  expect(Physics.angleBetween(2.5, 2)).toBeCloseTo(-0.5)
+  expect(Physics.angleBetween(Math.PI - 0.1, -Math.PI + 0.2)).toBeCloseTo(0.3)
+  expect(Physics.angleBetween(-Math.PI + 0.2, Math.PI - 0.1)).toBeCloseTo(-0.3)
 })
 
 test("rotateTowards", () => {
