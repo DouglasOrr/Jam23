@@ -22,8 +22,9 @@ function distanceSq(a: Vec2, b: Vec2): number {
 // Difference between angles in the range [-PI, PI]
 export function angleBetween(a: number, b: number): number {
   let diff = b - a
-  if (diff > Math.PI) diff -= 2 * Math.PI
-  if (diff < -Math.PI) diff += 2 * Math.PI
+  if (Math.abs(diff) > Math.PI) {
+    diff -= Math.sign(diff) * 2 * Math.PI
+  }
   return diff
 }
 
@@ -209,10 +210,10 @@ export class Turrets {
 
   constructor(surfacePosition: Vec2[], planet: Planet) {
     surfacePosition.forEach(([d, h]) => {
-      const angle = d / planet.radius
+      const angle = d / planet.radius - Math.PI
       this.position.push([
-        (planet.radius + h) * Math.sin(angle),
-        -(planet.radius + h) * Math.cos(angle),
+        -(planet.radius + h) * Math.sin(angle),
+        (planet.radius + h) * Math.cos(angle),
       ])
       this.angle.push(angle)
       this.reload.push(S.turretReloadTime)
