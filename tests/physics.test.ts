@@ -22,6 +22,7 @@ test("basic Physics.Sim", () => {
     height: [0, 0, 10, 10, 5, 5, 5, 5, 5],
     spacing: 10,
     turrets: [[20, 10]],
+    factories: [[45, 5]],
     friendlies: 0,
   })
 

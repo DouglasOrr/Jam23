@@ -8,6 +8,7 @@ export interface LevelData {
   spacing: number
   height: number[]
   turrets: Vec2[]
+  factories: Vec2[]
   friendlies: number
 }
 
@@ -170,6 +171,22 @@ export class Bombs {
     this.timeToLive[index] = S.bombTimeToLive
   }
 
+  #blowUpSurface(
+    position: [number, number],
+    objects: SurfaceObjects,
+    events: Events,
+  ): void {
+    objects.position.forEach((objPosition, i) => {
+      if (
+        objects.alive[i] &&
+        distanceSq(position, objPosition) < S.bombBlastRadius ** 2
+      ) {
+        objects.alive[i] = false
+        events.explosions.push(objPosition)
+      }
+    })
+  }
+
   update(sim: Sim, dt: number, events: Events): void {
     for (let i = 0; i < S.maxBombs; ++i) {
       if (0 < this.timeToLive[i]) {
@@ -186,26 +203,17 @@ export class Bombs {
         if (height < sim.planet.getHeight(position) + S.bombSize / 2) {
           this.timeToLive[i] = 0
           events.explosions.push(position)
-          for (let j = 0; j < sim.turrets.position.length; ++j) {
-            const turretPosition = sim.turrets.position[j]
-            if (
-              sim.turrets.alive[j] &&
-              distanceSq(position, turretPosition) < S.bombBlastRadius ** 2
-            ) {
-              sim.turrets.alive[j] = false
-              events.explosions.push(turretPosition)
-            }
-          }
+          this.#blowUpSurface(position, sim.turrets, events)
+          this.#blowUpSurface(position, sim.factories, events)
         }
       }
     }
   }
 }
 
-export class Turrets {
+class SurfaceObjects {
   position: Vec2[] = []
   angle: number[] = []
-  reload: number[] = []
   alive: boolean[] = []
 
   constructor(surfacePosition: Vec2[], planet: Planet) {
@@ -216,8 +224,20 @@ export class Turrets {
         (planet.radius + h) * Math.cos(angle),
       ])
       this.angle.push(angle)
-      this.reload.push(S.turretReloadTime)
       this.alive.push(true)
+    })
+  }
+}
+
+export class Factories extends SurfaceObjects {}
+
+export class Turrets extends SurfaceObjects {
+  reload: number[] = []
+
+  constructor(surfacePosition: Vec2[], planet: Planet) {
+    super(surfacePosition, planet)
+    this.position.forEach((_) => {
+      this.reload.push(S.turretReloadTime)
     })
   }
 
@@ -358,6 +378,7 @@ export class Ships {
 
 export class Sim {
   planet: Planet
+  factories: Factories
   turrets: Turrets
   bullets: Bullets = new Bullets()
   bombs: Bombs = new Bombs()
@@ -365,6 +386,7 @@ export class Sim {
 
   constructor(level: LevelData) {
     this.planet = new Planet(level)
+    this.factories = new Factories(level.factories, this.planet)
     this.turrets = new Turrets(level.turrets, this.planet)
     const height = -this.planet.height[0] - 10
     this.ships.add([0, height])

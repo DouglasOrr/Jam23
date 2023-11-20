@@ -7,6 +7,7 @@ import * as Agent from "./agent"
 const S = {
   fov: 65,
   bulletRadius: 0.2,
+  factoryWidth: 7,
   friendlyAlpha: 0.6,
 }
 
@@ -67,6 +68,48 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
     this.burnLeft.emitting = control.left
     this.burnRight.emitting = control.right
     this.burnRetro.emitting = control.retro
+  }
+}
+
+class Factory implements SimUpdate {
+  index: number
+  factory: Phaser.GameObjects.Sprite
+  smoke: Phaser.GameObjects.Particles.ParticleEmitter
+
+  constructor(scene: Phaser.Scene, sim: Physics.Sim, index: number) {
+    this.index = index
+    const position = sim.factories.position[index]
+    const angle = sim.factories.angle[index]
+    const w = S.factoryWidth
+    const h = S.factoryWidth * 0.75
+    this.factory = scene.add
+      .sprite(position[0], position[1], "factory")
+      .setDisplaySize(w, h * 0.75)
+      .setOrigin(0.5, 0.2)
+      .setFlipY(true)
+      .setTint(0x555555)
+      .setRotation(sim.factories.angle[index])
+    const fx = 0.35 // 0.5=left, 0=centre
+    const smokex =
+      position[0] + fx * w * Math.cos(angle) - 0.8 * h * Math.sin(angle)
+    const smokey =
+      position[1] + fx * w * Math.sin(angle) + 0.8 * h * Math.cos(angle)
+    const smokeAngleDeg = ((angle + Math.PI / 2) * 180) / Math.PI
+    this.smoke = scene.add.particles(smokex, smokey, "smoke", {
+      blendMode: "NORMAL",
+      lifespan: 8000,
+      speed: 0.5,
+      angle: { min: smokeAngleDeg - 15, max: smokeAngleDeg + 15 },
+      frequency: 4000,
+      scale: { start: 0.025, end: 0.04, ease: "cube-in" },
+      alpha: { start: 1, end: 0, ease: "cube-in" },
+    })
+  }
+
+  update(sim: Physics.Sim): void {
+    const alive = sim.factories.alive[this.index]
+    this.factory.setVisible(alive)
+    this.smoke.emitting = alive
   }
 }
 
@@ -187,10 +230,11 @@ export default class Game extends Phaser.Scene {
   }
 
   preload(): void {
+    this.load.image("bomb", "bomb.png")
+    this.load.image("factory", "factory.png")
     this.load.json("level", "level.json")
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
-    this.load.image("bomb", "bomb.png")
   }
 
   create(): void {
@@ -205,6 +249,9 @@ export default class Game extends Phaser.Scene {
     this.updaters.push(...ships)
 
     // Level
+    for (let i = 0; i < this.sim.factories.position.length; ++i) {
+      this.updaters.push(new Factory(this, this.sim, i))
+    }
     for (let i = 0; i < this.sim.turrets.position.length; ++i) {
       this.updaters.push(new Turret(this, this.sim, i))
     }
