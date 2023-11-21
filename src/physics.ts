@@ -384,6 +384,16 @@ export class Sim {
   bullets: Bullets = new Bullets()
   bombs: Bombs = new Bombs()
   ships: Ships = new Ships()
+  log: Record<string, unknown[]> = {
+    left: [],
+    right: [],
+    retro: [],
+    dropBomb: [],
+    position: [],
+    velocity: [],
+    angle: [],
+    angularVelocity: [],
+  }
 
   constructor(level: LevelData) {
     this.planet = new Planet(level)
@@ -421,7 +431,26 @@ export class Sim {
     }
   }
 
+  #log(): void {
+    const index = 0
+    for (const [k, v] of Object.entries(this.ships.control[index])) {
+      this.log[k].push(+v)
+    }
+    this.log.position.push(
+      this.ships.position[index].map((a) => Math.round(1000 * a) / 1000),
+    )
+    this.log.velocity.push(
+      this.ships.velocity[index].map((a) => Math.round(1000 * a) / 1000),
+    )
+    // Angle requires higher resolution
+    this.log.angle.push(Math.round(10000 * this.ships.angle[index]) / 10000)
+    this.log.angularVelocity.push(
+      Math.round(10000 * this.ships.angularVelocity[index]) / 10000,
+    )
+  }
+
   update(events: Events): void {
+    this.#log()
     this.ships.update(this, events)
     this.turrets.update(this)
     this.bullets.update(this)

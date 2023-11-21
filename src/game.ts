@@ -189,6 +189,15 @@ class Bombs implements SimUpdate {
   }
 }
 
+function downloadJSON(data: Record<string, unknown>, name: string): void {
+  const a = document.createElement("a")
+  a.href =
+    "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data))
+  a.download = name
+  a.click()
+  a.remove()
+}
+
 class KeyboardControl implements SimUpdate {
   index: number
   controls: {
@@ -198,7 +207,7 @@ class KeyboardControl implements SimUpdate {
     dropBomb: Phaser.Input.Keyboard.Key
   }
 
-  constructor(scene: Phaser.Scene, index: number) {
+  constructor(scene: Phaser.Scene, index: number, sim: Physics.Sim) {
     this.index = index
     const keyboard = scene.input.keyboard!
     this.controls = {
@@ -207,6 +216,9 @@ class KeyboardControl implements SimUpdate {
       retro: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
       dropBomb: keyboard.addKey("x"),
     }
+    keyboard.on("keydown-S", () => {
+      downloadJSON(sim.log, "log.json")
+    })
   }
 
   update(sim: Physics.Sim): void {
@@ -267,7 +279,7 @@ export default class Game extends Phaser.Scene {
     this.updaters.push(new Bombs(this, this.sim))
 
     // Control
-    this.controllers.push(new KeyboardControl(this, 0))
+    this.controllers.push(new KeyboardControl(this, 0, this.sim))
     for (let i = 1; i < this.sim.ships.position.length; ++i) {
       this.controllers.push(new Agent.ScriptAgent(i, 0, [-5 * i, 2]))
     }
