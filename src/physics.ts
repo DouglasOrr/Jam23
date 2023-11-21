@@ -12,8 +12,8 @@ export interface LevelData {
   friendlies: number
 }
 
-export interface Events {
-  explosions: Vec2[]
+export class Events {
+  explosions: Vec2[] = []
 }
 
 function distanceSq(a: Vec2, b: Vec2): number {
@@ -49,6 +49,7 @@ export function rotateTowards(
 // Main logic
 
 export const S = {
+  dt: 1 / 100,
   // Ship
   G: 10,
   thrust: 40,
@@ -130,14 +131,14 @@ export class Bullets {
     this.timeToLive[index] = S.bulletRange / S.bulletSpeed
   }
 
-  update(sim: Sim, dt: number): void {
+  update(sim: Sim): void {
     for (let i = 0; i < S.maxBullets; ++i) {
       if (0 < this.timeToLive[i]) {
         const position = this.position[i]
         const velocity = this.velocity[i]
-        position[0] += dt * velocity[0]
-        position[1] += dt * velocity[1]
-        this.timeToLive[i] -= dt
+        position[0] += S.dt * velocity[0]
+        position[1] += S.dt * velocity[1]
+        this.timeToLive[i] -= S.dt
 
         // Terrain collision
         const height2 = position[0] ** 2 + position[1] ** 2
@@ -187,17 +188,17 @@ export class Bombs {
     })
   }
 
-  update(sim: Sim, dt: number, events: Events): void {
+  update(sim: Sim, events: Events): void {
     for (let i = 0; i < S.maxBombs; ++i) {
       if (0 < this.timeToLive[i]) {
         const position = this.position[i]
         const height = Math.sqrt(position[0] ** 2 + position[1] ** 2)
         const velocity = this.velocity[i]
-        velocity[0] -= (dt * S.G * position[0]) / height
-        velocity[1] -= (dt * S.G * position[1]) / height
-        position[0] += dt * velocity[0]
-        position[1] += dt * velocity[1]
-        this.timeToLive[i] -= dt
+        velocity[0] -= (S.dt * S.G * position[0]) / height
+        velocity[1] -= (S.dt * S.G * position[1]) / height
+        position[0] += S.dt * velocity[0]
+        position[1] += S.dt * velocity[1]
+        this.timeToLive[i] -= S.dt
 
         // Terrain collision
         if (height < sim.planet.getHeight(position) + S.bombSize / 2) {
@@ -241,7 +242,7 @@ export class Turrets extends SurfaceObjects {
     })
   }
 
-  update(sim: Sim, dt: number): void {
+  update(sim: Sim): void {
     this.position.forEach((position, i) => {
       if (this.alive[i]) {
         // Select target
@@ -269,11 +270,11 @@ export class Turrets extends SurfaceObjects {
           this.angle[i] = rotateTowards(
             this.angle[i],
             targetAngle,
-            dt * S.turretRotationRate,
+            S.dt * S.turretRotationRate,
           )
 
           // Fire
-          this.reload[i] -= dt
+          this.reload[i] -= S.dt
           if (this.reload[i] <= 0) {
             const angle = this.angle[i]
             sim.bullets.fire(
@@ -317,7 +318,7 @@ export class Ships {
     this.control.push(new ShipControl())
   }
 
-  update(sim: Sim, dt: number, events: Events): void {
+  update(sim: Sim, events: Events): void {
     for (let i = 0; i < this.position.length; ++i) {
       if (this.alive[i]) {
         // State
@@ -339,10 +340,10 @@ export class Ships {
         let angle = this.angle[i]
         let angularVelocity = this.angularVelocity[i]
         angularVelocity +=
-          dt *
+          S.dt *
           (S.rotationRate * (+control.left - +control.right) -
             S.rotationDamping * angularVelocity)
-        angle += dt * angularVelocity
+        angle += S.dt * angularVelocity
         angle += +(Math.abs(angle) > Math.PI) * -Math.sign(angle) * 2 * Math.PI
         this.angularVelocity[i] = angularVelocity
         this.angle[i] = angle
@@ -357,16 +358,16 @@ export class Ships {
         const speed = Math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
         const drag = S.velocityDamping * speed
         velocity[0] +=
-          dt * (up * sinBearing + thrust * sinA - drag * velocity[0])
+          S.dt * (up * sinBearing + thrust * sinA - drag * velocity[0])
         velocity[1] +=
-          dt * (up * cosBearing + thrust * cosA - drag * velocity[1])
+          S.dt * (up * cosBearing + thrust * cosA - drag * velocity[1])
 
         // Position
-        position[0] += dt * velocity[0]
-        position[1] += dt * velocity[1]
+        position[0] += S.dt * velocity[0]
+        position[1] += S.dt * velocity[1]
 
         // Drop bomb
-        this.reload[i] -= dt
+        this.reload[i] -= S.dt
         if (control.dropBomb && this.reload[i] < 0) {
           sim.bombs.fire(this.position[i], this.velocity[i])
           this.reload[i] = S.shipReloadTime
@@ -420,13 +421,11 @@ export class Sim {
     }
   }
 
-  update(dt: number): Events {
-    const events: Events = { explosions: [] }
-    this.ships.update(this, dt, events)
-    this.turrets.update(this, dt)
-    this.bullets.update(this, dt)
-    this.bombs.update(this, dt, events)
+  update(events: Events): void {
+    this.ships.update(this, events)
+    this.turrets.update(this)
+    this.bullets.update(this)
+    this.bombs.update(this, events)
     this.#detectCollisions(events)
-    return events
   }
 }

@@ -224,6 +224,7 @@ export default class Game extends Phaser.Scene {
   updaters: SimUpdate[] = []
   controls: Phaser.Input.Keyboard.Key[] = []
   controlBomb?: Phaser.Input.Keyboard.Key
+  physicsTimeOverflow: number = 0
 
   constructor() {
     super({ key: "game" })
@@ -239,6 +240,7 @@ export default class Game extends Phaser.Scene {
 
   create(): void {
     this.sim = new Physics.Sim(this.cache.json.get("level"))
+    this.physicsTimeOverflow = 0
     this.controllers = []
     this.updaters = []
 
@@ -278,11 +280,16 @@ export default class Game extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.physicsTimeOverflow += delta / 1000
     if (this.sim !== undefined) {
       this.controllers.forEach((x) => {
         x.update(this.sim!)
       })
-      const events = this.sim.update(delta / 1000)
+      const events = new Physics.Events()
+      while (this.physicsTimeOverflow >= Physics.S.dt) {
+        this.sim.update(events)
+        this.physicsTimeOverflow -= Physics.S.dt
+      }
       this.updaters.forEach((x) => {
         x.update(this.sim!)
       })

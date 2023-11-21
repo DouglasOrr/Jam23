@@ -27,14 +27,15 @@ test("basic Physics.Sim", () => {
   })
 
   // First step is fine
-  expect(sim.update(0.1).explosions).toHaveLength(0)
+  const events = new Physics.Events()
+  sim.update(events)
+  expect(events.explosions).toHaveLength(0)
 
   // No input for 5s -> ship should die by gravity
-  let explosions: Physics.Vec2[] = []
-  for (let i = 0; i < 50 && explosions.length === 0; ++i) {
-    explosions = sim.update(0.1).explosions
+  for (let i = 0; i < 5 / Physics.S.dt && events.explosions.length === 0; ++i) {
+    sim.update(events)
   }
-  expect(explosions.length).toBe(1)
-  expect(explosions[0]).toMatchObject(sim.ships.position[0])
+  expect(events.explosions.length).toBe(1)
+  expect(events.explosions[0]).toMatchObject(sim.ships.position[0])
   expect(sim.ships.alive[0]).toBe(false)
 })
