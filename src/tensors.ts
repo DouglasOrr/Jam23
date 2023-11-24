@@ -81,6 +81,18 @@ export function relu(t: Tensor): Tensor {
   return result
 }
 
+export function sigmoid(t: Tensor): Tensor {
+  const result = new Tensor(t.data.clone().map_((x) => 1 / (1 + Math.exp(-x))))
+  _tape.push(() => {
+    t.grad.map_(
+      (g, i) =>
+        g +
+        result.grad.data[i] * result.data.data[i] * (1 - result.data.data[i]),
+    )
+  })
+  return result
+}
+
 export function softmaxCrossEntropy(logits: Tensor, target: NdArray): Tensor {
   assertArrayEquals(target.shape, [logits.shape[0], 1])
   const logSoftmax = logits.data.clone().logSoftmax_()

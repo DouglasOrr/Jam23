@@ -1,5 +1,50 @@
 import * as T from "../src/tensors"
-import { NdArray } from "../src/ndarray"
+import { NdArray, assertArrayEquals } from "../src/ndarray"
+
+// Ops
+
+function vector(data: number[]): T.Tensor {
+  return new T.Tensor(new NdArray([data.length], data))
+}
+
+function assertClose(expected: NdArray, actual: NdArray): void {
+  assertArrayEquals(expected.shape, actual.shape)
+  expected.data.forEach((v, i) => {
+    expect(actual.data[i]).toBeCloseTo(v)
+  })
+}
+
+function withUnitGrad<T>(fn: () => T.Tensor): T.Tensor {
+  return T.withGrad(() => {
+    const result = fn()
+    result.grad.fill_(1)
+    return result
+  })
+}
+
+test("sigmoid", () => {
+  const input = vector([-1, 0, 1])
+  const out = withUnitGrad(() => T.sigmoid(input))
+  assertClose(vector([0.2689, 0.5, 0.7311]).data, out.data)
+  assertClose(vector([0.1966, 0.25, 0.1966]).data, input.grad)
+})
+
+test("softmaxCrossEntropy", () => {
+  const logits = new T.Tensor(
+    new NdArray([2, 4], [1000, 1000, 1000, 1000, -2100, -2100, -2000, -2100]),
+  )
+  const targets = new NdArray([2, 1], [3, 2])
+  const loss = withUnitGrad(() => T.softmaxCrossEntropy(logits, targets))
+  expect(loss.shape).toStrictEqual([2, 1])
+  expect(loss.data.data[0]).toBeCloseTo(Math.log(4))
+  expect(loss.data.data[1]).toBeCloseTo(0)
+  assertClose(
+    vector([1 / 4, 1 / 4, 1 / 4, -3 / 4, 0, 0, 0, 0]).data.view_([2, 4]),
+    logits.grad,
+  )
+})
+
+// All together
 
 // A model for learning to add two numbers [0..9]
 class TestModel extends T.Model {
@@ -64,24 +109,4 @@ test("TestModel training using Tensors", () => {
   expect(log[log.length - 1].accuracy).toBeGreaterThan(0.9)
   expect(log[0].loss).toBeGreaterThan(1.5) // should be around ln(20)=3
   expect(log[log.length - 1].loss).toBeLessThan(0.1)
-})
-
-test("softmaxCrossEntropy", () => {
-  const logits = new T.Tensor(
-    new NdArray([2, 4], [1000, 1000, 1000, 1000, -2100, -2100, -2000, -2100]),
-  )
-  const targets = new NdArray([2, 1], [3, 2])
-  const loss = T.withGrad(() => {
-    const loss = T.softmaxCrossEntropy(logits, targets)
-    loss.grad.fill_(1)
-    return loss
-  })
-  expect(loss.shape).toStrictEqual([2, 1])
-  expect(loss.data.data[0]).toBeCloseTo(Math.log(4))
-  expect(loss.data.data[1]).toBeCloseTo(0)
-
-  const expected = [1 / 4, 1 / 4, 1 / 4, -3 / 4, 0, 0, 0, 0]
-  expected.forEach((v, i) => {
-    expect(logits.grad.data[i]).toBeCloseTo(v)
-  })
 })
