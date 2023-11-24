@@ -29,6 +29,15 @@ test("sigmoid", () => {
   assertClose(vector([0.1966, 0.25, 0.1966]).data, input.grad)
 })
 
+test("l1Loss", () => {
+  const a = vector([100, 200, 300])
+  const b = vector([200, 200, -50])
+  const out = withUnitGrad(() => T.l1Loss(a, b))
+  assertClose(vector([100, 0, 350]).data, out.data)
+  assertClose(vector([-1, 0, 1]).data, a.grad)
+  assertClose(vector([1, 0, -1]).data, b.grad)
+})
+
 test("softmaxCrossEntropy", () => {
   const logits = new T.Tensor(
     new NdArray([2, 4], [1000, 1000, 1000, 1000, -2100, -2100, -2000, -2100]),

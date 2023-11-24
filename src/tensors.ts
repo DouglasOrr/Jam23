@@ -93,6 +93,22 @@ export function sigmoid(t: Tensor): Tensor {
   return result
 }
 
+export function l1Loss(a: Tensor, b: Tensor): Tensor {
+  assertArrayEquals(a.shape, b.shape)
+  const result = new Tensor(
+    a.data.clone().map_((ai, i) => Math.abs(ai - b.data.data[i])),
+  )
+  _tape.push(() => {
+    for (let i = 0; i < a.data.data.length; ++i) {
+      const grad = result.grad.data[i]
+      const sign = Math.sign(a.data.data[i] - b.data.data[i])
+      a.grad.data[i] += grad * sign
+      b.grad.data[i] += grad * -sign
+    }
+  })
+  return result
+}
+
 export function softmaxCrossEntropy(logits: Tensor, target: NdArray): Tensor {
   assertArrayEquals(target.shape, [logits.shape[0], 1])
   const logSoftmax = logits.data.clone().logSoftmax_()
