@@ -117,9 +117,9 @@ export function l2Loss(a: Tensor, b: Tensor): Tensor {
   _tape.push(() => {
     for (let i = 0; i < a.data.data.length; ++i) {
       const grad = result.grad.data[i]
-      const diff = a.data.data[i] - b.data.data[i]
-      a.grad.data[i] += grad * diff
-      b.grad.data[i] += grad * -diff
+      const agrad = 2 * grad * (a.data.data[i] - b.data.data[i])
+      a.grad.data[i] += agrad
+      b.grad.data[i] -= agrad
     }
   })
   return result
