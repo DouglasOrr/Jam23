@@ -38,6 +38,15 @@ test("l1Loss", () => {
   assertClose(vector([1, 0, -1]).data, b.grad)
 })
 
+test("l2Loss", () => {
+  const a = vector([1, 2, 3])
+  const b = vector([1, -1, 4])
+  const out = withUnitGrad(() => T.l2Loss(a, b))
+  assertClose(vector([0, 9, 1]).data, out.data)
+  assertClose(vector([0, 3, -1]).data, a.grad)
+  assertClose(vector([0, -3, 1]).data, b.grad)
+})
+
 test("softmaxCrossEntropy", () => {
   const logits = new T.Tensor(
     new NdArray([2, 4], [1000, 1000, 1000, 1000, -2100, -2100, -2000, -2100]),
