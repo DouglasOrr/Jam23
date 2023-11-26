@@ -203,9 +203,13 @@ class KeyboardControl implements SimUpdate {
   controls: {
     left: Phaser.Input.Keyboard.Key
     right: Phaser.Input.Keyboard.Key
+    up: Phaser.Input.Keyboard.Key
     retro: Phaser.Input.Keyboard.Key
     dropBomb: Phaser.Input.Keyboard.Key
   }
+
+  agent: Agent.LearningAgent
+  controlByAgent: boolean = false
 
   constructor(scene: Phaser.Scene, index: number, sim: Physics.Sim) {
     this.index = index
@@ -213,20 +217,39 @@ class KeyboardControl implements SimUpdate {
     this.controls = {
       left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
       right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
+      up: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
       retro: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
       dropBomb: keyboard.addKey("x"),
     }
     keyboard.on("keydown-S", () => {
       downloadJSON(sim.log, "log.json")
     })
+    this.agent = new Agent.LearningAgent(
+      index,
+      scene.cache.json.get("test_model"),
+    )
+    keyboard.on("keydown-A", () => {
+      this.controlByAgent = !this.controlByAgent
+    })
   }
 
   update(sim: Physics.Sim): void {
-    const shipControl = sim.ships.control[this.index]
-    shipControl.left = this.controls.left.isDown
-    shipControl.right = this.controls.right.isDown
-    shipControl.retro = this.controls.retro.isDown
-    shipControl.dropBomb = this.controls.dropBomb.isDown
+    if (this.controlByAgent) {
+      const target = this.agent.targetVelocity
+      const magnitude = 20
+      target[0] = target[1] = 0
+      target[0] -= magnitude * +this.controls.left.isDown
+      target[0] += magnitude * +this.controls.right.isDown
+      target[1] -= magnitude * +this.controls.up.isDown
+      target[1] += magnitude * +this.controls.retro.isDown
+      this.agent.update(sim)
+    } else {
+      const shipControl = sim.ships.control[this.index]
+      shipControl.left = this.controls.left.isDown
+      shipControl.right = this.controls.right.isDown
+      shipControl.retro = this.controls.retro.isDown
+      shipControl.dropBomb = this.controls.dropBomb.isDown
+    }
   }
 }
 
@@ -248,6 +271,7 @@ export default class Game extends Phaser.Scene {
     this.load.json("level", "level.json")
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
+    this.load.json("test_model", "test_model.json")
   }
 
   create(): void {

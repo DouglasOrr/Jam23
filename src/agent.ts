@@ -1,4 +1,8 @@
 import * as Physics from "./physics"
+import * as T from "./tensors"
+import { NdArray } from "./ndarray"
+
+// Script
 
 export class ScriptAgent {
   index: number
@@ -64,6 +68,119 @@ export class ScriptAgent {
       control.retro = true
       control.left = idelta > 0
       control.right = idelta < 0
+    }
+  }
+}
+
+// Machine learning
+
+export function getNormalisedFeature(
+  position: Physics.Vec2,
+  velocity: Physics.Vec2,
+  angle: number,
+  angularVelocity: number,
+  targetVelocity: Physics.Vec2,
+): number[] {
+  const maxAngularVelocity = 3
+  const maxVelocity = 30
+
+  const bearing = Math.atan2(-position[0], position[1])
+  const sinB = Math.sin(bearing)
+  const cosB = Math.cos(bearing)
+  const polarAngle = Physics.angleBetween(bearing, angle)
+  const velocityR = velocity[0] * -sinB + velocity[1] * cosB
+  const velocityTheta = velocity[0] * -cosB + velocity[1] * -sinB
+  const targetVelocityR = targetVelocity[0] * -sinB + targetVelocity[1] * cosB
+  const targetVelocityTheta =
+    targetVelocity[0] * -cosB + targetVelocity[1] * -sinB
+
+  return [
+    polarAngle / Math.PI,
+    angularVelocity / maxAngularVelocity,
+    velocityR / maxVelocity,
+    velocityTheta / maxVelocity,
+    targetVelocityR / maxVelocity,
+    targetVelocityTheta / maxVelocity,
+  ]
+}
+
+export function encodeFeature(
+  nFrequencies: number,
+  feature: number[],
+): number[] {
+  const result: number[] = []
+  for (let i = 0; i < feature.length; ++i) {
+    const value = feature[i]
+    for (let j = 0; j < nFrequencies / 2; ++j) {
+      const alpha = value * Math.PI * 0.5 * Math.pow(2, j)
+      result.push(Math.sin(alpha), Math.cos(alpha))
+    }
+  }
+  return result
+}
+
+export class Model {
+  nFrequencies: number
+  layers: T.Tensor[]
+
+  constructor(nFrequencies: number, hiddenSize: number, weights: number[][]) {
+    this.nFrequencies = nFrequencies
+    this.layers = []
+    for (let i = 0; i < weights.length; ++i) {
+      const inputSize = i === 0 ? 6 * nFrequencies : hiddenSize
+      const outputSize = i < weights.length - 1 ? hiddenSize : 3
+      this.layers.push(
+        new T.Tensor(new NdArray([inputSize, outputSize], weights[i])),
+      )
+    }
+  }
+
+  predict(feature: number[]): number[] {
+    const encodedData = encodeFeature(this.nFrequencies, feature)
+    let x = new T.Tensor(new NdArray([1, encodedData.length], encodedData))
+    for (let i = 0; i < this.layers.length; ++i) {
+      x = T.dot(x, this.layers[i])
+      if (i === this.layers.length - 1) {
+        x = T.sigmoid(x)
+      } else {
+        x = T.relu(x)
+      }
+    }
+    return x.data.data
+  }
+}
+
+export class LearningAgent {
+  index: number
+  model: Model
+  targetVelocity: Physics.Vec2
+
+  constructor(index: number, spec: Record<string, unknown>) {
+    this.index = index
+    this.model = new Model(
+      spec.n_frequencies as number,
+      spec.hidden_size as number,
+      spec.weights as number[][],
+    )
+    this.targetVelocity = [0, 0]
+  }
+
+  update(sim: Physics.Sim): void {
+    if (sim.ships.alive[this.index]) {
+      const signal = this.model.predict(
+        getNormalisedFeature(
+          sim.ships.position[this.index],
+          sim.ships.velocity[this.index],
+          sim.ships.angle[this.index],
+          sim.ships.angularVelocity[this.index],
+          this.targetVelocity,
+        ),
+      )
+      const control = sim.ships.control[this.index]
+      control.left = Math.random() < signal[0]
+      control.right = Math.random() < signal[1]
+      control.retro = Math.random() < signal[2]
+      control.dropBomb = false // TODO
     }
   }
 }
