@@ -1,88 +1,18 @@
 import * as Physics from "./physics"
 import * as T from "./tensors"
-import { NdArray } from "./ndarray"
-
-// Script
-
-export class ScriptAgent {
-  index: number
-  targetIndex: number
-  followOffset: Physics.Vec2
-  constructor(index: number, targetIndex: number, followOffset: Physics.Vec2) {
-    this.index = index
-    this.targetIndex = targetIndex
-    this.followOffset = followOffset
-  }
-
-  update(sim: Physics.Sim): void {
-    // Target
-    const shipPosition = sim.ships.position[this.targetIndex]
-    const bearing = Math.atan2(-shipPosition[0], shipPosition[1])
-    const cosB = Math.cos(bearing)
-    const sinB = Math.sin(bearing)
-    const targetx =
-      shipPosition[0] -
-      this.followOffset[0] * cosB -
-      this.followOffset[1] * sinB
-    const targety =
-      shipPosition[1] -
-      this.followOffset[0] * sinB +
-      this.followOffset[1] * cosB
-    const targetVelocity = sim.ships.velocity[this.targetIndex]
-
-    // State
-    const position = sim.ships.position[this.index]
-    const velocity = sim.ships.velocity[this.index]
-    const angle = sim.ships.angle[this.index]
-
-    // Compute ideal velocity
-    const rx = targetx - position[0]
-    const ry = targety - position[1]
-    const distance = Math.sqrt(rx ** 2 + ry ** 2)
-    const idealSpeed = Math.min(3 * distance, 30)
-    const ivelocityx = (idealSpeed * rx) / distance + targetVelocity[0]
-    const ivelocityy = (idealSpeed * ry) / distance + targetVelocity[1]
-
-    // Compute ideal acceleration direction
-    const dvelocityx = ivelocityx - velocity[0]
-    const dvelocityy = ivelocityy - velocity[1]
-    const dspeed = Math.sqrt(dvelocityx ** 2 + dvelocityy ** 2)
-    const idelta = Physics.angleBetween(
-      angle,
-      Math.atan2(-dvelocityx, dvelocityy),
-    )
-
-    // Accelerate
-    const control = sim.ships.control[this.index]
-    control.dropBomb = sim.ships.control[this.targetIndex].dropBomb
-    if (dspeed < 4) {
-      control.left = control.right = control.retro = false
-    } else if (Math.abs(idelta) < 0.2) {
-      control.left = control.right = true
-      control.retro = false
-    } else if (Math.abs(idelta) < 0.4) {
-      control.retro = false
-      control.left = idelta > 0
-      control.right = idelta < 0
-    } else {
-      control.retro = true
-      control.left = idelta > 0
-      control.right = idelta < 0
-    }
-  }
-}
-
-// Machine learning
-
-function clip(x: number, low: number, high: number): number {
-  return Math.min(Math.max(x, low), high)
-}
-
-const FEATURE_SIZE = 6
+import { NdArray, assertEquals } from "./ndarray"
 
 export const S = {
   maxAngularVelocity: 3,
   maxVelocity: 30,
+  lr: 0.01,
+  adamBeta: [0.9, 0.999] as [number, number],
+}
+
+const FEATURE_SIZE = 6
+
+function clip(x: number, low: number, high: number): number {
+  return Math.min(Math.max(x, low), high)
 }
 
 // Compute the network input features, from the world state
@@ -128,19 +58,43 @@ export function encodeFeature(
   return result
 }
 
-export class Model {
+export class Model extends T.Model {
   nFrequencies: number
-  layers: T.Tensor[]
+  layers: T.Parameter[]
 
-  constructor(nFrequencies: number, hiddenSize: number, weights: number[][]) {
+  constructor(nFrequencies: number, hiddenSize: number, depth: number) {
+    super(
+      (shape, scale) =>
+        new T.AdamParameter(
+          new NdArray(shape).rand_(-scale, scale),
+          S.lr,
+          S.adamBeta,
+          1e-8,
+        ),
+    )
     this.nFrequencies = nFrequencies
     this.layers = []
-    for (let i = 0; i < weights.length; ++i) {
+    for (let i = 0; i < depth; ++i) {
       const inputSize = i === 0 ? FEATURE_SIZE * nFrequencies : hiddenSize
-      const outputSize = i < weights.length - 1 ? hiddenSize : 3
+      const outputSize = i === depth - 1 ? 3 : hiddenSize
       this.layers.push(
-        new T.Tensor(new NdArray([inputSize, outputSize], weights[i])),
+        this.addParameter(
+          [inputSize, outputSize],
+          (inputSize * outputSize) ** 0.25,
+        ),
       )
+    }
+  }
+
+  init(weights: number[][]): void {
+    assertEquals(weights.length, this.layers.length, "init weights (depth)")
+    for (let i = 0; i < this.layers.length; ++i) {
+      assertEquals(
+        this.layers[i].data.data.length,
+        weights[i].length,
+        () => `init weight layer ${i}`,
+      )
+      this.layers[i].data.data = [...weights[i]]
     }
   }
 
@@ -169,8 +123,9 @@ export class LearningAgent {
     this.model = new Model(
       spec.n_frequencies as number,
       spec.hidden_size as number,
-      spec.weights as number[][],
+      spec.depth as number,
     )
+    this.model.init(spec.weights as number[][])
     this.targetVelocity = [0, 0]
   }
 

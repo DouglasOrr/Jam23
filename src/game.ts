@@ -3,6 +3,7 @@
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import * as Agent from "./agent"
+import ScriptAgent from "./scriptagent"
 
 const S = {
   fov: 65,
@@ -305,7 +306,7 @@ export default class Game extends Phaser.Scene {
     // Control
     this.controllers.push(new KeyboardControl(this, 0, this.sim))
     for (let i = 1; i < this.sim.ships.position.length; ++i) {
-      this.controllers.push(new Agent.ScriptAgent(i, 0, [-5 * i, 2]))
+      this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
     }
 
     // Camera
