@@ -3,7 +3,6 @@
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import * as Agent from "./agent"
-import ScriptAgent from "./scriptagent"
 
 const S = {
   fov: 65,
@@ -225,10 +224,8 @@ class KeyboardControl implements SimUpdate {
     keyboard.on("keydown-S", () => {
       downloadJSON(sim.log, "log.json")
     })
-    this.agent = new Agent.LearningAgent(
-      index,
-      scene.cache.json.get("test_model"),
-    )
+    this.agent = new Agent.LearningAgent([this.index], this.index)
+    this.agent.init(scene.cache.json.get("test_model"))
     keyboard.on("keydown-A", () => {
       this.controlByAgent = !this.controlByAgent
     })
@@ -305,9 +302,15 @@ export default class Game extends Phaser.Scene {
 
     // Control
     this.controllers.push(new KeyboardControl(this, 0, this.sim))
-    for (let i = 1; i < this.sim.ships.position.length; ++i) {
-      this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
-    }
+    const learningAgent = new Agent.LearningAgent(
+      [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
+      0,
+    )
+    learningAgent.init(this.cache.json.get("test_model"))
+    this.controllers.push(learningAgent)
+    // for (let i = 2; i < this.sim.ships.position.length; ++i) {
+    //   this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
+    // }
 
     // Camera
     const camera = this.cameras.main

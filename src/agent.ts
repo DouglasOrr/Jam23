@@ -3,13 +3,20 @@ import * as T from "./tensors"
 import { NdArray, assertEquals } from "./ndarray"
 
 export const S = {
+  // Features
   maxAngularVelocity: 3,
   maxVelocity: 30,
+  // Model
+  nFrequencies: 4,
+  hiddenSize: 32,
+  depth: 3,
+  // Training
   lr: 0.01,
   adamBeta: [0.9, 0.999] as [number, number],
 }
 
 const FEATURE_SIZE = 6
+const OUTPUT_SIZE = 3
 
 function clip(x: number, low: number, high: number): number {
   return Math.min(Math.max(x, low), high)
@@ -43,16 +50,17 @@ export function getNormalisedFeature(
   ]
 }
 
-export function encodeFeature(
-  nFrequencies: number,
-  feature: number[],
-): number[] {
-  const result: number[] = []
-  for (let i = 0; i < feature.length; ++i) {
-    const value = feature[i]
+function encodeFeature(nFrequencies: number, feature: NdArray): NdArray {
+  const result = new NdArray([
+    feature.shape[0],
+    nFrequencies * feature.shape[1],
+  ])
+  for (let i = 0; i < feature.data.length; ++i) {
+    const value = feature.data[i]
     for (let j = 0; j < nFrequencies / 2; ++j) {
       const alpha = value * Math.PI * 0.5 * Math.pow(2, j)
-      result.push(Math.sin(alpha), Math.cos(alpha))
+      result.data[nFrequencies * i + 2 * j] = Math.sin(alpha)
+      result.data[nFrequencies * i + 2 * j + 1] = Math.cos(alpha)
     }
   }
   return result
@@ -76,7 +84,7 @@ export class Model extends T.Model {
     this.layers = []
     for (let i = 0; i < depth; ++i) {
       const inputSize = i === 0 ? FEATURE_SIZE * nFrequencies : hiddenSize
-      const outputSize = i === depth - 1 ? 3 : hiddenSize
+      const outputSize = i === depth - 1 ? OUTPUT_SIZE : hiddenSize
       this.layers.push(
         this.addParameter(
           [inputSize, outputSize],
@@ -98,9 +106,8 @@ export class Model extends T.Model {
     }
   }
 
-  predict(feature: number[]): number[] {
-    const encodedData = encodeFeature(this.nFrequencies, feature)
-    let x = new T.Tensor(new NdArray([1, encodedData.length], encodedData))
+  predict(feature: NdArray): NdArray {
+    let x = new T.Tensor(encodeFeature(this.nFrequencies, feature))
     for (let i = 0; i < this.layers.length; ++i) {
       x = T.dot(x, this.layers[i])
       if (i === this.layers.length - 1) {
@@ -109,42 +116,56 @@ export class Model extends T.Model {
         x = T.relu(x)
       }
     }
-    return x.data.data
+    return x.data
   }
 }
 
 export class LearningAgent {
-  index: number
+  indices: number[]
+  teacherIndex: number
   model: Model
   targetVelocity: Physics.Vec2
 
-  constructor(index: number, spec: Record<string, unknown>) {
-    this.index = index
+  constructor(indices: number[], teacherIndex: number) {
+    this.indices = indices
+    this.teacherIndex = teacherIndex
+    this.model = new Model(S.nFrequencies, S.hiddenSize, S.depth)
+    this.targetVelocity = [0, 0]
+  }
+
+  init(spec: Record<string, unknown>): void {
     this.model = new Model(
       spec.n_frequencies as number,
       spec.hidden_size as number,
       spec.depth as number,
     )
     this.model.init(spec.weights as number[][])
-    this.targetVelocity = [0, 0]
   }
 
   update(sim: Physics.Sim): void {
-    if (sim.ships.alive[this.index]) {
-      const signal = this.model.predict(
-        getNormalisedFeature(
-          sim.ships.position[this.index],
-          sim.ships.velocity[this.index],
-          sim.ships.angle[this.index],
-          sim.ships.angularVelocity[this.index],
+    const features = new NdArray([this.indices.length, FEATURE_SIZE])
+    this.indices.forEach((index, i) => {
+      features.data.splice(
+        i * FEATURE_SIZE,
+        FEATURE_SIZE,
+        ...getNormalisedFeature(
+          sim.ships.position[index],
+          sim.ships.velocity[index],
+          sim.ships.angle[index],
+          sim.ships.angularVelocity[index],
           this.targetVelocity,
         ),
       )
-      const control = sim.ships.control[this.index]
-      control.left = Math.random() < signal[0]
-      control.right = Math.random() < signal[1]
-      control.retro = Math.random() < signal[2]
-      control.dropBomb = false // TODO
-    }
+    })
+    const control = this.model.predict(features).data
+    this.indices.forEach((index, i) => {
+      if (sim.ships.alive[index]) {
+        const shipControl = sim.ships.control[index]
+        shipControl.left = Math.random() < control[OUTPUT_SIZE * i + 0]
+        shipControl.right = Math.random() < control[OUTPUT_SIZE * i + 1]
+        shipControl.retro = Math.random() < control[OUTPUT_SIZE * i + 2]
+        shipControl.dropBomb = false // TODO
+      }
+    })
   }
 }
