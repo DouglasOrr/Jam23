@@ -74,6 +74,18 @@ export class ScriptAgent {
 
 // Machine learning
 
+function clip(x: number, low: number, high: number): number {
+  return Math.min(Math.max(x, low), high)
+}
+
+const FEATURE_SIZE = 6
+
+export const S = {
+  maxAngularVelocity: 3,
+  maxVelocity: 30,
+}
+
+// Compute the network input features, from the world state
 export function getNormalisedFeature(
   position: Physics.Vec2,
   velocity: Physics.Vec2,
@@ -81,9 +93,6 @@ export function getNormalisedFeature(
   angularVelocity: number,
   targetVelocity: Physics.Vec2,
 ): number[] {
-  const maxAngularVelocity = 3
-  const maxVelocity = 30
-
   const bearing = Math.atan2(-position[0], position[1])
   const sinB = Math.sin(bearing)
   const cosB = Math.cos(bearing)
@@ -95,12 +104,12 @@ export function getNormalisedFeature(
     targetVelocity[0] * -cosB + targetVelocity[1] * -sinB
 
   return [
-    polarAngle / Math.PI,
-    angularVelocity / maxAngularVelocity,
-    velocityR / maxVelocity,
-    velocityTheta / maxVelocity,
-    targetVelocityR / maxVelocity,
-    targetVelocityTheta / maxVelocity,
+    clip(polarAngle / Math.PI, -1, 1),
+    clip(angularVelocity / S.maxAngularVelocity, -1, 1),
+    clip(velocityR / S.maxVelocity, -1, 1),
+    clip(velocityTheta / S.maxVelocity, -1, 1),
+    clip(targetVelocityR / S.maxVelocity, -1, 1),
+    clip(targetVelocityTheta / S.maxVelocity, -1, 1),
   ]
 }
 
@@ -127,7 +136,7 @@ export class Model {
     this.nFrequencies = nFrequencies
     this.layers = []
     for (let i = 0; i < weights.length; ++i) {
-      const inputSize = i === 0 ? 6 * nFrequencies : hiddenSize
+      const inputSize = i === 0 ? FEATURE_SIZE * nFrequencies : hiddenSize
       const outputSize = i < weights.length - 1 ? hiddenSize : 3
       this.layers.push(
         new T.Tensor(new NdArray([inputSize, outputSize], weights[i])),
