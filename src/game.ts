@@ -342,7 +342,7 @@ export default class Game extends Phaser.Scene {
       })
       const camera = this.cameras.main
       const shipPosition = this.sim.ships.position[0]
-      const rotation = Math.atan2(shipPosition[0], shipPosition[1]) + Math.PI
+      const rotation = Math.atan2(-shipPosition[0], -shipPosition[1])
       camera.setRotation(rotation)
       camera.setFollowOffset(-10 * Math.sin(rotation), -10 * Math.cos(rotation))
     }
