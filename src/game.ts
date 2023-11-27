@@ -306,8 +306,20 @@ export default class Game extends Phaser.Scene {
       [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
       0,
     )
-    learningAgent.init(this.cache.json.get("test_model"))
+    // learningAgent.init(this.cache.json.get("test_model"))
     this.controllers.push(learningAgent)
+    this.input.keyboard!.on("keydown-D", () => {
+      console.log("training state", {
+        "buffer.count": learningAgent.trainingBuffer.count,
+        loss: learningAgent.losses,
+        f3: learningAgent.model.layers[2].data.data,
+      })
+    })
+    this.input.keyboard!.on("keydown-F", () => {
+      for (let i = 1; i < this.sim!.ships.alive.length; ++i) {
+        this.sim!.ships.reset(i)
+      }
+    })
     // for (let i = 2; i < this.sim.ships.position.length; ++i) {
     //   this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
     // }
@@ -322,14 +334,23 @@ export default class Game extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.physicsTimeOverflow += delta / 1000
     if (this.sim !== undefined) {
+      // Control
       this.controllers.forEach((x) => {
         x.update(this.sim!)
       })
+      // Respawn (after control, so that controllers see the death)
+      for (let i = 0; i < this.sim.ships.alive.length; ++i) {
+        if (!this.sim.ships.alive[i]) {
+          this.sim.ships.reset(i)
+        }
+      }
+      // Physics
       const events = new Physics.Events()
       while (this.physicsTimeOverflow >= Physics.S.dt) {
         this.sim.update(events)
         this.physicsTimeOverflow -= Physics.S.dt
       }
+      // Graphics
       this.updaters.forEach((x) => {
         x.update(this.sim!)
       })

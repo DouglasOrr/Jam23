@@ -93,6 +93,14 @@ export function sigmoid(t: Tensor): Tensor {
   return result
 }
 
+export function sigmoidSTE(t: Tensor): Tensor {
+  const result = new Tensor(t.data.clone().map_((x) => 1 / (1 + Math.exp(-x))))
+  _tape.push(() => {
+    t.grad.map_((g, i) => g + result.grad.data[i])
+  })
+  return result
+}
+
 export function l1Loss(a: Tensor, b: Tensor): Tensor {
   assertArrayEquals(a.shape, b.shape)
   const result = new Tensor(

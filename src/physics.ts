@@ -62,6 +62,7 @@ export const S = {
   lift: 0.1,
   shipSize: 2,
   shipReloadTime: 5,
+  maxAltitude: 100,
   // Bomb
   maxBombs: 50,
   bombTimeToLive: 10,
@@ -303,6 +304,7 @@ export class ShipControl {
 }
 
 export class Ships {
+  spawnPosition: Vec2[] = []
   position: Vec2[] = []
   velocity: Vec2[] = []
   angle: number[] = []
@@ -312,13 +314,25 @@ export class Ships {
   control: ShipControl[] = []
 
   add(position: Vec2): void {
-    this.position.push(position)
+    this.spawnPosition.push(position.slice() as Vec2)
+    this.position.push(position.slice() as Vec2)
     this.velocity.push([0, 0])
     this.angle.push(Math.atan2(-position[0], position[1]))
     this.angularVelocity.push(0)
     this.reload.push(0)
     this.alive.push(true)
     this.control.push(new ShipControl())
+  }
+
+  reset(i: number): void {
+    const position = this.spawnPosition[i]
+    this.position[i] = position.slice() as Vec2
+    this.velocity[i] = [0, 0]
+    this.angle[i] = Math.atan2(-position[0], position[1])
+    this.angularVelocity[i] = 0
+    this.reload[i] = 0
+    this.alive[i] = true
+    this.control[i] = new ShipControl()
   }
 
   update(sim: Sim, events: Events): void {
@@ -333,7 +347,11 @@ export class Ships {
         const cosBearing = position[1] / r
 
         // Collision
-        if (r < sim.planet.getHeight(position) + S.shipSize / 2) {
+        const planetHeight = sim.planet.getHeight(position)
+        if (
+          r < planetHeight + S.shipSize / 2 ||
+          planetHeight + S.maxAltitude < r
+        ) {
           this.alive[i] = false
           events.explosions.push(position)
           continue
