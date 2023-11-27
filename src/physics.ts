@@ -4,9 +4,12 @@
 
 export type Vec2 = [number, number]
 
-export interface LevelData {
+export interface PlanetData {
   spacing: number
   height: number[]
+}
+
+export interface LevelData extends PlanetData {
   turrets: Vec2[]
   factories: Vec2[]
   friendlies: number
@@ -78,16 +81,16 @@ export class Planet {
   radius: number
   height: number[]
 
-  constructor(level: LevelData) {
-    this.radius = (level.height.length * level.spacing) / (2 * Math.PI)
-    this.height = level.height.map((h: number) => this.radius + h)
+  constructor(data: PlanetData) {
+    this.radius = (data.height.length * data.spacing) / (2 * Math.PI)
+    this.height = data.height.map((h: number) => this.radius + h)
     this.height.push(this.height[0]) // wrap-around (easier hit detection)
   }
 
   getHeight(position: [number, number]): number {
     let offset = Math.atan2(position[0], -position[1]) / (2 * Math.PI)
     offset = (this.height.length - 1) * (offset + +(offset < 0))
-    const i0 = Math.floor(offset)
+    const i0 = Math.min(Math.floor(offset), this.height.length - 2)
     const i1 = i0 + 1
     return (i1 - offset) * this.height[i0] + (offset - i0) * this.height[i1]
   }

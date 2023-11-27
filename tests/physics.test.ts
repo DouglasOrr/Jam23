@@ -39,3 +39,20 @@ test("basic Physics.Sim", () => {
   expect(events.explosions[0]).toMatchObject(sim.ships.position[0])
   expect(sim.ships.alive[0]).toBe(false)
 })
+
+test("Planet.getHeight", () => {
+  const planet = new Physics.Planet({ spacing: 10, height: [0, -5, 10, 5] })
+  expect(2 * Math.PI * planet.radius).toBeCloseTo(40)
+
+  const r = planet.radius
+  expect(planet.getHeight([0, -20])).toBeCloseTo(r + 0)
+  expect(planet.getHeight([20, 0])).toBeCloseTo(r - 5)
+  expect(planet.getHeight([0, 20])).toBeCloseTo(r + 10)
+  expect(planet.getHeight([-20, 0])).toBeCloseTo(r + 5)
+
+  // Interpolation
+  expect(planet.getHeight([-20, -20])).toBeCloseTo(r + 2.5)
+
+  // Tricky case that can cause an overflow from the `height` lookup
+  expect(planet.getHeight([-1e-29, -20])).toBeCloseTo(r + 0)
+})
