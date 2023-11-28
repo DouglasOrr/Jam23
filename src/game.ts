@@ -8,7 +8,8 @@ const S = {
   fov: 65,
   bulletRadius: 0.2,
   factoryWidth: 7,
-  friendlyAlpha: 0.6,
+  friendlyAlpha: 0.4,
+  playerLives: 3,
 }
 
 interface SimUpdate {
@@ -53,7 +54,7 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
       speed: 15,
       blendMode: "ADD",
       frequency: 15,
-      alpha: this.index === 0 ? 1 : S.friendlyAlpha,
+      alpha: this.index === 0 ? 1 : S.friendlyAlpha ** 2,
     })
     this.add(emitter)
     return emitter
@@ -239,6 +240,8 @@ export default class Game extends Phaser.Scene {
   controls: Phaser.Input.Keyboard.Key[] = []
   controlBomb?: Phaser.Input.Keyboard.Key
   physicsTimeOverflow: number = 0
+  livesRemaining: number = 0
+  victory: boolean | null = null
 
   constructor() {
     super({ key: "game" })
@@ -250,12 +253,13 @@ export default class Game extends Phaser.Scene {
     this.load.json("level", "level.json")
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
-    this.load.json("test_model", "test_model.json")
   }
 
   create(): void {
     this.sim = new Physics.Sim(this.cache.json.get("level"))
     this.physicsTimeOverflow = 0
+    this.livesRemaining = S.playerLives
+    this.victory = null
     this.controllers = []
     this.updaters = []
 
@@ -283,26 +287,14 @@ export default class Game extends Phaser.Scene {
 
     // Control
     this.controllers.push(new KeyboardControl(this, 0, this.sim))
-    // const learningAgent = new Agent.LearningAgent(
-    //   [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
-    //   0,
+    // this.controllers.push(
+    //   new Agent.LearningAgent(
+    //     [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
+    //     0,
+    //   ),
     // )
-    // // learningAgent.init(this.cache.json.get("test_model"))
-    // this.controllers.push(learningAgent)
-    // this.input.keyboard!.on("keydown-D", () => {
-    //   console.log("training state", {
-    //     "buffer.count": learningAgent.trainingBuffer.count,
-    //     loss: learningAgent.losses,
-    //     f3: learningAgent.model.layers[2].data.data,
-    //   })
-    // })
-    this.input.keyboard!.on("keydown-F", () => {
-      for (let i = 1; i < this.sim!.ships.alive.length; ++i) {
-        this.sim!.ships.reset(i)
-      }
-    })
     for (let i = 1; i < this.sim.ships.position.length; ++i) {
-      this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
+      this.controllers.push(new ScriptAgent(i))
     }
 
     // Camera
@@ -321,17 +313,23 @@ export default class Game extends Phaser.Scene {
       this.controllers.forEach((x) => {
         x.update(this.sim!)
       })
-      // Respawn (after control, so that controllers see the death)
-      for (let i = 0; i < this.sim.ships.alive.length; ++i) {
-        if (!this.sim.ships.alive[i]) {
-          this.sim.ships.reset(i)
-        }
-      }
       // Physics
       const events = new Physics.Events()
       while (this.physicsTimeOverflow >= Physics.S.dt) {
         this.sim.update(events)
         this.physicsTimeOverflow -= Physics.S.dt
+      }
+      // Outcome
+      this.livesRemaining -= +events.playerDeath
+      if (this.victory === null) {
+        if (this.livesRemaining === 0) {
+          this.victory = false
+          this.scene.pause()
+        }
+        if (!this.sim.factories.alive.reduce((a, b) => a || b, false)) {
+          this.victory = true
+          this.scene.pause()
+        }
       }
       // Graphics
       this.updaters.forEach((x) => {

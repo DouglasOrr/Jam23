@@ -17,6 +17,37 @@ test("rotateTowards", () => {
   expect(Physics.rotateTowards(-3, 3, 0.4)).toBeCloseTo(3)
 })
 
+test("createGridPattern", () => {
+  const expected = [
+    // L0
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    // L1
+    [0, 1],
+    [1, 1],
+    [-1, 1],
+    [2, 0],
+    [-2, 0],
+    [2, 1],
+    [-2, 1],
+    // L2
+    [0, 2],
+    [1, 2],
+    [-1, 2],
+    [2, 2],
+    [-2, 2],
+    [3, 0],
+    [-3, 0],
+    [3, 1],
+    [-3, 1],
+    [3, 2],
+    [-3, 2],
+  ]
+  expect(Physics.createGridPattern(4)).toStrictEqual(expected.slice(0, 4))
+  expect(Physics.createGridPattern(expected.length)).toStrictEqual(expected)
+})
+
 test("basic Physics.Sim", () => {
   const sim = new Physics.Sim({
     height: [0, 0, 10, 10, 5, 5, 5, 5, 5],

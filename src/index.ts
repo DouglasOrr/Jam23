@@ -33,6 +33,10 @@ class UI extends Phaser.Scene {
       .setOrigin(0.5, 0.5)
       .setVisible(false)
     gameScene.events.on("pause", () => {
+      const victory = (gameScene as Game).victory
+      pausedText.setText(
+        victory === null ? "paused" : victory ? "you win" : "you lose",
+      )
       pausedText.setVisible(true)
       pausedOverlay.setVisible(true)
     })

@@ -17,6 +17,7 @@ export interface LevelData extends PlanetData {
 
 export class Events {
   explosions: Vec2[] = []
+  playerDeath: boolean = false
 }
 
 function distanceSq(a: Vec2, b: Vec2): number {
@@ -63,6 +64,9 @@ export const S = {
   shipSize: 2,
   shipReloadTime: 5,
   maxAltitude: 100,
+  startAltitude: 20,
+  allySpacing: 5,
+  respawnDelay: [2, 5],
   // Bomb
   maxBombs: 50,
   bombTimeToLive: 10,
@@ -303,7 +307,10 @@ export class ShipControl {
   dropBomb: boolean = false
 }
 
+// Player ship (index 0) and allied ships (index >= 1)
+// - note that these behave slightly differently
 export class Ships {
+  // player (0) absolute-cartesian, allies relative to player
   spawnPosition: Vec2[] = []
   position: Vec2[] = []
   velocity: Vec2[] = []
@@ -311,28 +318,55 @@ export class Ships {
   angularVelocity: number[] = []
   reload: number[] = []
   alive: boolean[] = []
+  respawn: number[] = []
   control: ShipControl[] = []
+
+  getSpawnPosition(i: number): Vec2 {
+    if (i === 0) {
+      return this.spawnPosition[0].slice() as Vec2
+    }
+    const player = this.position[0]
+    const spawn = this.spawnPosition[i]
+    const bearing = Math.atan2(-player[0], player[1])
+    const cosB = Math.cos(bearing)
+    const sinB = Math.sin(bearing)
+    const offsetX = spawn[0] * cosB - spawn[1] * sinB
+    const offsetY = spawn[0] * sinB + spawn[1] * cosB
+    return [player[0] + offsetX, player[1] + offsetY]
+  }
 
   add(position: Vec2): void {
     this.spawnPosition.push(position.slice() as Vec2)
-    this.position.push(position.slice() as Vec2)
+    position = this.getSpawnPosition(this.spawnPosition.length - 1)
+    this.position.push(position)
     this.velocity.push([0, 0])
     this.angle.push(Math.atan2(-position[0], position[1]))
     this.angularVelocity.push(0)
     this.reload.push(0)
     this.alive.push(true)
+    this.respawn.push(0)
     this.control.push(new ShipControl())
   }
 
   reset(i: number): void {
-    const position = this.spawnPosition[i]
+    const position = this.getSpawnPosition(i)
     this.position[i] = position.slice() as Vec2
     this.velocity[i] = [0, 0]
     this.angle[i] = Math.atan2(-position[0], position[1])
     this.angularVelocity[i] = 0
     this.reload[i] = 0
     this.alive[i] = true
+    this.respawn[i] = 0
     this.control[i] = new ShipControl()
+  }
+
+  kill(i: number, events: Events): void {
+    events.explosions.push(this.position[i])
+    if (i === 0) {
+      events.playerDeath = true
+    }
+    this.alive[i] = false
+    this.respawn[i] = S.respawnDelay[+(1 <= i)]
   }
 
   update(sim: Sim, events: Events): void {
@@ -352,8 +386,7 @@ export class Ships {
           r < planetHeight + S.shipSize / 2 ||
           planetHeight + S.maxAltitude < r
         ) {
-          this.alive[i] = false
-          events.explosions.push(position)
+          this.kill(i, events)
           continue
         }
 
@@ -393,9 +426,29 @@ export class Ships {
           sim.bombs.fire(this.position[i], this.velocity[i])
           this.reload[i] = S.shipReloadTime
         }
+      } /* alive */ else {
+        this.respawn[i] -= S.dt
+        if (this.respawn[i] <= 0) {
+          this.alive[i] = true
+          this.reset(i)
+        }
       }
     }
   }
+}
+
+export function createGridPattern(n: number): Vec2[] {
+  const result = [] as Vec2[]
+  for (let level = 0; result.length < n; ++level) {
+    result.push([0, level])
+    for (let i = 1; i <= level; ++i) {
+      result.push([i, level], [-i, level])
+    }
+    for (let i = 0; i <= level; ++i) {
+      result.push([level + 1, i], [-level - 1, i])
+    }
+  }
+  return result.slice(0, n)
 }
 
 export class Sim {
@@ -420,10 +473,14 @@ export class Sim {
     this.planet = new Planet(level)
     this.factories = new Factories(level.factories, this.planet)
     this.turrets = new Turrets(level.turrets, this.planet)
-    const height = -this.planet.height[0] - 10
+    const height = -this.planet.height[0] - S.startAltitude
     this.ships.add([0, height])
+    const grid = createGridPattern(1 + level.friendlies)
     for (let i = 0; i < level.friendlies; ++i) {
-      this.ships.add([-5 * (i + 1), height])
+      this.ships.add([
+        S.allySpacing * grid[i + 1][0],
+        S.allySpacing * grid[i + 1][1],
+      ])
     }
   }
 
@@ -442,9 +499,8 @@ export class Sim {
             const distanceSq =
               (ship[0] - bullet[0]) ** 2 + (ship[1] - bullet[1]) ** 2
             if (distanceSq < S.shipSize ** 2) {
-              this.ships.alive[shipI] = false
+              this.ships.kill(shipI, events)
               this.bullets.timeToLive[bulletI] = 0
-              events.explosions.push(ship)
             }
           }
         }
