@@ -310,6 +310,8 @@ export default class Game extends Phaser.Scene {
     camera.setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
     camera.setScroll(-camera.width / 2, -camera.height / 2)
     camera.startFollow(ships[0], false, 0.05, 0.05)
+
+    this.scene.pause()
   }
 
   update(_time: number, delta: number): void {

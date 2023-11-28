@@ -11,7 +11,20 @@ class UI extends Phaser.Scene {
   create(): void {
     this.scene.launch("game")
     this.scene.bringToTop()
+    const gameScene = this.scene.get("game")
+
     const camera = this.cameras.main
+    const pausedOverlay = this.add
+      .rectangle(
+        0,
+        0,
+        camera.displayWidth,
+        camera.displayHeight,
+        0x88000000,
+        0.0,
+      )
+      .setOrigin(0, 0)
+      .setVisible(false)
     const pausedText = this.add
       .text(camera.displayWidth / 2, camera.displayHeight / 2, "paused", {
         color: "#fff",
@@ -19,19 +32,23 @@ class UI extends Phaser.Scene {
       })
       .setOrigin(0.5, 0.5)
       .setVisible(false)
+    gameScene.events.on("pause", () => {
+      pausedText.setVisible(true)
+      pausedOverlay.setVisible(true)
+    })
+    gameScene.events.on("resume", () => {
+      pausedText.setVisible(false)
+      pausedOverlay.setVisible(false)
+    })
     this.input.keyboard!.on("keydown-SPACE", () => {
-      const mainScene = this.scene.get("game").scene
-      if (mainScene.isPaused()) {
-        mainScene.resume()
-        pausedText.setVisible(false)
+      if (gameScene.scene.isPaused()) {
+        gameScene.scene.resume()
       } else {
-        mainScene.pause()
-        pausedText.setVisible(true)
+        gameScene.scene.pause()
       }
     })
     this.input.keyboard!.on("keydown-R", () => {
-      this.scene.get("game").scene.restart()
-      pausedText.setVisible(false)
+      gameScene.scene.restart()
     })
   }
 }
