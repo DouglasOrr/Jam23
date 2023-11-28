@@ -4,7 +4,7 @@ import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import ScriptAgent from "./scriptagent"
 
-const S = {
+export const S = {
   fov: 65,
   bulletRadius: 0.2,
   factoryWidth: 7,
@@ -233,7 +233,7 @@ class KeyboardControl implements SimUpdate {
   }
 }
 
-export default class Game extends Phaser.Scene {
+export class Game extends Phaser.Scene {
   sim?: Physics.Sim
   controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
@@ -242,6 +242,10 @@ export default class Game extends Phaser.Scene {
   physicsTimeOverflow: number = 0
   livesRemaining: number = 0
   victory: boolean | null = null
+
+  factoryLiveCount(): number {
+    return this.sim!.factories.alive.reduce((n, alive) => n + +alive, 0)
+  }
 
   constructor() {
     super({ key: "game" })
@@ -322,13 +326,11 @@ export default class Game extends Phaser.Scene {
       // Outcome
       this.livesRemaining -= +events.playerDeath
       if (this.victory === null) {
-        if (this.livesRemaining === 0) {
-          this.victory = false
-          this.scene.pause()
-        }
-        if (!this.sim.factories.alive.reduce((a, b) => a || b, false)) {
-          this.victory = true
-          this.scene.pause()
+        if (this.livesRemaining === 0 || this.factoryLiveCount() === 0) {
+          this.victory = this.livesRemaining !== 0
+          this.time.delayedCall(1000, () => {
+            this.scene.pause()
+          })
         }
       }
       // Graphics

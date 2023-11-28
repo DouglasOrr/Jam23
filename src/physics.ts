@@ -421,8 +421,8 @@ export class Ships {
         position[1] += S.dt * velocity[1]
 
         // Drop bomb
-        this.reload[i] -= S.dt
-        if (control.dropBomb && this.reload[i] < 0) {
+        this.reload[i] = Math.max(0, this.reload[i] - S.dt)
+        if (control.dropBomb && this.reload[i] === 0) {
           sim.bombs.fire(this.position[i], this.velocity[i])
           this.reload[i] = S.shipReloadTime
         }
