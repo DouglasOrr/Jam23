@@ -2,7 +2,7 @@
 
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
-import * as Agent from "./agent"
+import ScriptAgent from "./scriptagent"
 
 const S = {
   fov: 65,
@@ -208,9 +208,6 @@ class KeyboardControl implements SimUpdate {
     dropBomb: Phaser.Input.Keyboard.Key
   }
 
-  agent: Agent.LearningAgent
-  controlByAgent: boolean = false
-
   constructor(scene: Phaser.Scene, index: number, sim: Physics.Sim) {
     this.index = index
     const keyboard = scene.input.keyboard!
@@ -224,30 +221,14 @@ class KeyboardControl implements SimUpdate {
     keyboard.on("keydown-S", () => {
       downloadJSON(sim.log, "log.json")
     })
-    this.agent = new Agent.LearningAgent([this.index], this.index)
-    this.agent.init(scene.cache.json.get("test_model"))
-    keyboard.on("keydown-A", () => {
-      this.controlByAgent = !this.controlByAgent
-    })
   }
 
   update(sim: Physics.Sim): void {
-    if (this.controlByAgent) {
-      const target = this.agent.targetVelocity
-      const magnitude = 20
-      target[0] = target[1] = 0
-      target[0] -= magnitude * +this.controls.left.isDown
-      target[0] += magnitude * +this.controls.right.isDown
-      target[1] -= magnitude * +this.controls.up.isDown
-      target[1] += magnitude * +this.controls.retro.isDown
-      this.agent.update(sim)
-    } else {
-      const shipControl = sim.ships.control[this.index]
-      shipControl.left = this.controls.left.isDown
-      shipControl.right = this.controls.right.isDown
-      shipControl.retro = this.controls.retro.isDown
-      shipControl.dropBomb = this.controls.dropBomb.isDown
-    }
+    const shipControl = sim.ships.control[this.index]
+    shipControl.left = this.controls.left.isDown
+    shipControl.right = this.controls.right.isDown
+    shipControl.retro = this.controls.retro.isDown
+    shipControl.dropBomb = this.controls.dropBomb.isDown
   }
 }
 
@@ -302,27 +283,27 @@ export default class Game extends Phaser.Scene {
 
     // Control
     this.controllers.push(new KeyboardControl(this, 0, this.sim))
-    const learningAgent = new Agent.LearningAgent(
-      [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
-      0,
-    )
-    // learningAgent.init(this.cache.json.get("test_model"))
-    this.controllers.push(learningAgent)
-    this.input.keyboard!.on("keydown-D", () => {
-      console.log("training state", {
-        "buffer.count": learningAgent.trainingBuffer.count,
-        loss: learningAgent.losses,
-        f3: learningAgent.model.layers[2].data.data,
-      })
-    })
+    // const learningAgent = new Agent.LearningAgent(
+    //   [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
+    //   0,
+    // )
+    // // learningAgent.init(this.cache.json.get("test_model"))
+    // this.controllers.push(learningAgent)
+    // this.input.keyboard!.on("keydown-D", () => {
+    //   console.log("training state", {
+    //     "buffer.count": learningAgent.trainingBuffer.count,
+    //     loss: learningAgent.losses,
+    //     f3: learningAgent.model.layers[2].data.data,
+    //   })
+    // })
     this.input.keyboard!.on("keydown-F", () => {
       for (let i = 1; i < this.sim!.ships.alive.length; ++i) {
         this.sim!.ships.reset(i)
       }
     })
-    // for (let i = 2; i < this.sim.ships.position.length; ++i) {
-    //   this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
-    // }
+    for (let i = 1; i < this.sim.ships.position.length; ++i) {
+      this.controllers.push(new ScriptAgent(i, 0, [-5 * i, 2]))
+    }
 
     // Camera
     const camera = this.cameras.main
