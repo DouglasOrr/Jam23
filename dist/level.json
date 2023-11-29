@@ -5,13 +5,14 @@
     10, 10, 20, 20, 20, 20, 10, 10, 10, 5, 5, 5, 10
   ],
   "turrets": [
-    [50, 10],
-    [120, 20]
+    { "position": [280, 5], "level": 0 },
+    { "position": [50, 10], "level": 3 },
+    { "position": [120, 20], "level": 1 }
   ],
   "factories": [
     [5, 10],
     [135, 10],
     [290, 5]
   ],
-  "friendlies": 4
+  "friendlies": 2
 }
