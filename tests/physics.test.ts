@@ -54,7 +54,7 @@ test("basic Physics.Sim", () => {
     spacing: 10,
     turrets: [{ position: [20, 10], level: 2 }],
     factories: [[45, 5]],
-    friendlies: 0,
+    allies: 0,
   })
 
   // First step is fine

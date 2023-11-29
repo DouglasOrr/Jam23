@@ -254,7 +254,7 @@ export class Game extends Phaser.Scene {
   preload(): void {
     this.load.image("bomb", "bomb.png")
     this.load.image("factory", "factory.png")
-    this.load.json("level", "level.json")
+    this.load.json("level", "levels/example.json")
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
   }
@@ -328,7 +328,7 @@ export class Game extends Phaser.Scene {
       if (this.victory === null) {
         if (this.livesRemaining === 0 || this.factoryLiveCount() === 0) {
           this.victory = this.livesRemaining !== 0
-          this.time.delayedCall(1000, () => {
+          this.time.delayedCall(2000, () => {
             this.scene.pause()
           })
         }

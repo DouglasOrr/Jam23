@@ -17,7 +17,7 @@ export interface TurretData {
 export interface LevelData extends PlanetData {
   turrets: TurretData[]
   factories: Vec2[]
-  friendlies: number
+  allies: number
 }
 
 export class Events {
@@ -517,8 +517,8 @@ export class Sim {
     this.turrets = new Turrets(level.turrets, this.planet)
     const height = -this.planet.height[0] - S.startAltitude
     this.ships.add([0, height])
-    const grid = createGridPattern(1 + level.friendlies)
-    for (let i = 0; i < level.friendlies; ++i) {
+    const grid = createGridPattern(1 + level.allies)
+    for (let i = 0; i < level.allies; ++i) {
       this.ships.add([
         S.allySpacing * grid[i + 1][0],
         S.allySpacing * grid[i + 1][1],
