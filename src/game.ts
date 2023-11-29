@@ -5,7 +5,7 @@ import * as Physics from "./physics"
 import ScriptAgent from "./scriptagent"
 
 export const S = {
-  fov: 65,
+  fov: 75,
   bulletRadius: 0.2,
   factoryWidth: 7,
   friendlyAlpha: 0.4,
@@ -237,6 +237,7 @@ export class Game extends Phaser.Scene {
   sim?: Physics.Sim
   controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
+  playerShip?: Ship
   controls: Phaser.Input.Keyboard.Key[] = []
   controlBomb?: Phaser.Input.Keyboard.Key
   physicsTimeOverflow: number = 0
@@ -271,6 +272,7 @@ export class Game extends Phaser.Scene {
     const ships = this.sim.ships.position.map((_, i) =>
       this.add.existing(new Ship(this, this.sim!, i)),
     )
+    this.playerShip = ships[0]
     this.updaters.push(...ships)
 
     // Level
@@ -291,23 +293,43 @@ export class Game extends Phaser.Scene {
 
     // Control
     this.controllers.push(new KeyboardControl(this, 0, this.sim))
+    for (let i = 1; i < this.sim.ships.position.length; ++i) {
+      this.controllers.push(new ScriptAgent(i))
+    }
     // this.controllers.push(
     //   new Agent.LearningAgent(
     //     [...Array(this.sim.ships.position.length - 1)].map((_, i) => i + 1),
     //     0,
     //   ),
     // )
-    for (let i = 1; i < this.sim.ships.position.length; ++i) {
-      this.controllers.push(new ScriptAgent(i))
-    }
 
     // Camera
-    const camera = this.cameras.main
-    camera.setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
-    camera.setScroll(-camera.width / 2, -camera.height / 2)
-    camera.startFollow(ships[0], false, 0.05, 0.05)
+    this.#updateCamera(true)
+    this.scale.on("resize", () => {
+      this.#updateCamera(true)
+    })
 
     this.scene.pause()
+  }
+
+  #updateCamera(init: boolean): void {
+    const camera = this.cameras.main
+    const shipPosition = this.sim!.ships.position[0]
+    const rotation = Math.atan2(-shipPosition[0], -shipPosition[1])
+    camera
+      .setZoom(Math.min(camera.width / S.fov, camera.height / S.fov))
+      .setRotation(rotation)
+      .setFollowOffset(-10 * Math.sin(rotation), -10 * Math.cos(rotation))
+    if (init) {
+      camera.startFollow(
+        this.playerShip!,
+        false,
+        0.05,
+        0.05,
+        camera.followOffset.x,
+        camera.followOffset.y,
+      )
+    }
   }
 
   update(_time: number, delta: number): void {
@@ -348,11 +370,7 @@ export class Game extends Phaser.Scene {
           alpha: { start: 0.4, end: 0, ease: "cube.out" },
         })
       })
-      const camera = this.cameras.main
-      const shipPosition = this.sim.ships.position[0]
-      const rotation = Math.atan2(-shipPosition[0], -shipPosition[1])
-      camera.setRotation(rotation)
-      camera.setFollowOffset(-10 * Math.sin(rotation), -10 * Math.cos(rotation))
+      this.#updateCamera(false)
     }
   }
 }
