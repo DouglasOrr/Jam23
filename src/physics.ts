@@ -471,7 +471,13 @@ export class Ships {
         // Drop bomb
         this.reload[i] = Math.max(0, this.reload[i] - S.dt)
         if (control.dropBomb && this.reload[i] === 0) {
-          sim.bombs.fire(this.position[i], this.velocity[i])
+          sim.bombs.fire(
+            [
+              position[0] - (sinA * S.shipSize) / 2,
+              position[1] - (cosA * S.shipSize) / 2,
+            ],
+            velocity,
+          )
           this.reload[i] = S.shipReloadTime
         }
       } /* alive */ else {
