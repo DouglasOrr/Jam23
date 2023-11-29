@@ -130,10 +130,10 @@ class Turret implements SimUpdate {
         0,
         0,
         0,
-        -Physics.S.turretLength,
+        Physics.S.turretLength,
         0xffffffff,
       )
-      .setRotation(sim.turrets.angle[this.index])
+      .setRotation(sim.turrets.turretAngle[this.index])
       .setLineWidth(0.2)
       .setOrigin(0, 0)
   }
@@ -141,7 +141,7 @@ class Turret implements SimUpdate {
   update(sim: Physics.Sim): void {
     this.body.setVisible(sim.turrets.alive[this.index])
     this.gun
-      .setRotation(sim.turrets.angle[this.index])
+      .setRotation(sim.turrets.turretAngle[this.index])
       .setVisible(sim.turrets.alive[this.index])
   }
 }

@@ -9,8 +9,13 @@ export interface PlanetData {
   height: number[]
 }
 
+export interface TurretData {
+  position: Vec2
+  level: number
+}
+
 export interface LevelData extends PlanetData {
-  turrets: Vec2[]
+  turrets: TurretData[]
   factories: Vec2[]
   friendlies: number
 }
@@ -73,11 +78,10 @@ export const S = {
   bombSize: 1.5,
   bombBlastRadius: 5,
   // Turret
-  turretRotationRate: 0.5,
+  turretRotationRate: [0.5, 0.5, 1.0, 10.0],
+  bulletSpeed: [15, 20, 20, 30],
   turretReloadTime: 0.75,
   turretLength: 1.75,
-  // Bullet
-  bulletSpeed: 20,
   bulletRange: 80,
   maxBullets: 100,
 }
@@ -130,13 +134,13 @@ export class Bullets {
     }
   }
 
-  fire(position: Vec2, angle: number): void {
+  fire(position: Vec2, angle: number, speed: number): void {
     const index = freeIndex(this.timeToLive)
     this.position[index][0] = position[0]
     this.position[index][1] = position[1]
-    this.velocity[index][0] = S.bulletSpeed * Math.sin(angle)
-    this.velocity[index][1] = S.bulletSpeed * -Math.cos(angle)
-    this.timeToLive[index] = S.bulletRange / S.bulletSpeed
+    this.velocity[index][0] = speed * -Math.sin(angle)
+    this.velocity[index][1] = speed * Math.cos(angle)
+    this.timeToLive[index] = S.bulletRange / speed
   }
 
   update(sim: Sim): void {
@@ -241,58 +245,96 @@ class SurfaceObjects {
 export class Factories extends SurfaceObjects {}
 
 export class Turrets extends SurfaceObjects {
+  level: number[] = []
+  turretAngle: number[] = []
   reload: number[] = []
+  level0rotateDirection: number[] = []
 
-  constructor(surfacePosition: Vec2[], planet: Planet) {
-    super(surfacePosition, planet)
-    this.position.forEach((_) => {
+  constructor(data: TurretData[], planet: Planet) {
+    super(
+      data.map((d) => d.position),
+      planet,
+    )
+    data.forEach((d, i) => {
+      this.level.push(d.level)
+      this.turretAngle.push(this.angle[i])
       this.reload.push(S.turretReloadTime)
+      this.level0rotateDirection.push(1)
     })
+  }
+
+  #maybeFire(i: number, sim: Sim): void {
+    this.reload[i] -= S.dt
+    if (this.reload[i] <= 0) {
+      const position = this.position[i]
+      const turretAngle = this.turretAngle[i]
+      sim.bullets.fire(
+        [
+          position[0] - S.turretLength * Math.sin(turretAngle),
+          position[1] + S.turretLength * Math.cos(turretAngle),
+        ],
+        turretAngle,
+        S.bulletSpeed[this.level[i]],
+      )
+      this.reload[i] += S.turretReloadTime
+    }
   }
 
   update(sim: Sim): void {
     this.position.forEach((position, i) => {
       if (this.alive[i]) {
-        // Select target
-        let targetAngle: number | undefined
-        let targetScore: number | undefined
-        sim.ships.position.forEach((shipPosition, shipI) => {
-          if (sim.ships.alive[shipI]) {
-            const shipAngle = Math.atan2(
-              shipPosition[0] - position[0],
-              -(shipPosition[1] - position[1]),
-            )
-            // Magic number is a heuristic that trades of radians for distance
-            const shipScore =
-              Math.sqrt(distanceSq(position, shipPosition)) +
-              5 * Math.abs(angleBetween(this.angle[i], shipAngle))
-            if (targetScore === undefined || shipScore < targetScore) {
-              targetScore = shipScore
-              targetAngle = shipAngle
-            }
+        const level = this.level[i]
+        if (level === 0) {
+          // Level 0 turrets just sweep back & forth
+          if (
+            Math.PI / 3 <
+            Math.abs(angleBetween(this.turretAngle[i], this.angle[i]))
+          ) {
+            this.level0rotateDirection[i] *= -1
           }
-        })
-
-        if (targetAngle !== undefined) {
-          // Aim
-          this.angle[i] = rotateTowards(
-            this.angle[i],
-            targetAngle,
-            S.dt * S.turretRotationRate,
-          )
-
-          // Fire
-          this.reload[i] -= S.dt
-          if (this.reload[i] <= 0) {
-            const angle = this.angle[i]
-            sim.bullets.fire(
-              [
-                position[0] + S.turretLength * Math.sin(angle),
-                position[1] - S.turretLength * Math.cos(angle),
-              ],
-              angle,
+          this.turretAngle[i] +=
+            this.level0rotateDirection[i] * S.dt * S.turretRotationRate[level]
+          this.#maybeFire(i, sim)
+        } else {
+          // Level 1-2 turrets aim at a nearby ship
+          // First, select a target
+          let targetI: number | undefined
+          let targetScore: number | undefined
+          sim.ships.position.forEach((shipPosition, shipI) => {
+            if (sim.ships.alive[shipI]) {
+              const shipAngle = Math.atan2(
+                -(shipPosition[0] - position[0]),
+                shipPosition[1] - position[1],
+              )
+              // Magic number is a heuristic that trades off radians for distance
+              const shipScore =
+                Math.sqrt(distanceSq(position, shipPosition)) +
+                5 * Math.abs(angleBetween(this.turretAngle[i], shipAngle))
+              if (targetScore === undefined || shipScore < targetScore) {
+                targetScore = shipScore
+                targetI = shipI
+              }
+            }
+          })
+          if (targetI !== undefined) {
+            const targetPosition = sim.ships.position[targetI]
+            let targetAngle = Math.atan2(
+              -(targetPosition[0] - position[0]),
+              targetPosition[1] - position[1],
             )
-            this.reload[i] += S.turretReloadTime
+            if (level >= 2) {
+              const targetVelocity = sim.ships.velocity[targetI]
+              const targetTangentVelocity =
+                targetVelocity[0] * -Math.cos(targetAngle) +
+                targetVelocity[1] * Math.sin(targetAngle)
+              targetAngle += targetTangentVelocity / S.bulletSpeed[level]
+            }
+            this.turretAngle[i] = rotateTowards(
+              this.turretAngle[i],
+              targetAngle,
+              S.dt * S.turretRotationRate[level],
+            )
+            this.#maybeFire(i, sim)
           }
         }
       }
@@ -498,7 +540,7 @@ export class Sim {
             const bullet = this.bullets.position[bulletI]
             const distanceSq =
               (ship[0] - bullet[0]) ** 2 + (ship[1] - bullet[1]) ** 2
-            if (distanceSq < S.shipSize ** 2) {
+            if (distanceSq < (0.8 * S.shipSize) ** 2) {
               this.ships.kill(shipI, events)
               this.bullets.timeToLive[bulletI] = 0
             }
