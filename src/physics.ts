@@ -299,19 +299,25 @@ export class Turrets extends SurfaceObjects {
           // Level 1-2 turrets aim at a nearby ship
           // First, select a target
           let targetI: number | undefined
-          let targetScore: number | undefined
+          let targetCost: number | undefined
           sim.ships.position.forEach((shipPosition, shipI) => {
             if (sim.ships.alive[shipI]) {
               const shipAngle = Math.atan2(
                 -(shipPosition[0] - position[0]),
                 shipPosition[1] - position[1],
               )
-              // Magic number is a heuristic that trades off radians for distance
-              const shipScore =
-                Math.sqrt(distanceSq(position, shipPosition)) +
-                5 * Math.abs(angleBetween(this.turretAngle[i], shipAngle))
-              if (targetScore === undefined || shipScore < targetScore) {
-                targetScore = shipScore
+              const distance = Math.sqrt(distanceSq(position, shipPosition))
+              // Use a heuristic to trade off radians against distance
+              // Also, Level 3 turrets prefer to aim at the player
+              const cost =
+                distance +
+                10 * Math.abs(angleBetween(this.turretAngle[i], shipAngle)) -
+                100 * +(shipI === 0 && level >= 3)
+              if (
+                distance <= S.bulletRange &&
+                (targetCost === undefined || cost < targetCost)
+              ) {
+                targetCost = cost
                 targetI = shipI
               }
             }
@@ -326,7 +332,7 @@ export class Turrets extends SurfaceObjects {
               const targetVelocity = sim.ships.velocity[targetI]
               const targetTangentVelocity =
                 targetVelocity[0] * -Math.cos(targetAngle) +
-                targetVelocity[1] * Math.sin(targetAngle)
+                targetVelocity[1] * -Math.sin(targetAngle)
               targetAngle += targetTangentVelocity / S.bulletSpeed[level]
             }
             this.turretAngle[i] = rotateTowards(
