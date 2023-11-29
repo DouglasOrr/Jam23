@@ -166,22 +166,25 @@ export class Bombs {
   position: Vec2[] = []
   velocity: Vec2[] = []
   timeToLive: number[] = []
+  owner: number[] = []
 
   constructor() {
     for (let i = 0; i < S.maxBombs; ++i) {
       this.position.push([0, 0])
       this.velocity.push([0, 0])
       this.timeToLive.push(0)
+      this.owner.push(0)
     }
   }
 
-  fire(position: Vec2, velocity: Vec2): void {
+  fire(position: Vec2, velocity: Vec2, owner: number): void {
     const index = freeIndex(this.timeToLive)
     this.position[index][0] = position[0]
     this.position[index][1] = position[1]
     this.velocity[index][0] = velocity[0]
     this.velocity[index][1] = velocity[1]
     this.timeToLive[index] = S.bombTimeToLive
+    this.owner[index] = owner
   }
 
   #blowUpSurface(
@@ -477,6 +480,7 @@ export class Ships {
               position[1] - (cosA * S.shipSize) / 2,
             ],
             velocity,
+            i,
           )
           this.reload[i] = S.shipReloadTime
         }

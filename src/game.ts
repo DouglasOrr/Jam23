@@ -184,6 +184,7 @@ class Bombs implements SimUpdate {
       const velocity = sim.bombs.velocity[i]
       this.bombs[i]
         .setVisible(0 < sim.bombs.timeToLive[i])
+        .setAlpha(sim.bombs.owner[i] === 0 ? 1.0 : S.friendlyAlpha)
         .setPosition(position[0], position[1])
         .setRotation(Math.atan2(velocity[0], -velocity[1]))
     }
