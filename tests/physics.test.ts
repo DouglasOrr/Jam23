@@ -49,13 +49,16 @@ test("createGridPattern", () => {
 })
 
 test("basic Physics.Sim", () => {
-  const sim = new Physics.Sim({
-    height: [0, 0, 10, 10, 5, 5, 5, 5, 5],
-    spacing: 10,
-    turrets: [{ position: [20, 10], level: 2 }],
-    factories: [[45, 5]],
-    allies: 0,
-  })
+  const sim = new Physics.Sim(
+    {
+      height: [0, 0, 10, 10, 5, 5, 5, 5, 5],
+      spacing: 10,
+      turrets: [{ position: [20, 10], level: 2 }],
+      factories: [[45, 5]],
+      allies: 0,
+    },
+    { immortal: false, startPosition: 0 },
+  )
 
   // First step is fine
   const events = new Physics.Events()

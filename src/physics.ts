@@ -68,7 +68,7 @@ export const S = {
   lift: 0.1,
   shipSize: 2,
   shipReloadTime: 5,
-  maxAltitude: 100,
+  maxAltitude: 200,
   startAltitude: 20,
   allySpacing: 5,
   respawnDelay: [2, 5],
@@ -523,7 +523,13 @@ export function createGridPattern(n: number): Vec2[] {
   return result.slice(0, n)
 }
 
+export interface Config {
+  immortal: boolean
+  startPosition: number
+}
+
 export class Sim {
+  config: Config
   planet: Planet
   factories: Factories
   turrets: Turrets
@@ -541,12 +547,16 @@ export class Sim {
     angularVelocity: [],
   }
 
-  constructor(level: LevelData) {
+  constructor(level: LevelData, config: Config) {
+    this.config = config
     this.planet = new Planet(level)
     this.factories = new Factories(level.factories, this.planet)
     this.turrets = new Turrets(level.turrets, this.planet)
-    const height = -this.planet.height[0] - S.startAltitude
-    this.ships.add([0, height])
+
+    const angle = config.startPosition / this.planet.radius + Math.PI
+    const index = Math.round(config.startPosition / this.planet.spacing)
+    const height = this.planet.height[index] + S.startAltitude
+    this.ships.add([height * -Math.sin(angle), height * Math.cos(angle)])
     const grid = createGridPattern(1 + level.allies)
     for (let i = 0; i < level.allies; ++i) {
       this.ships.add([
@@ -571,7 +581,9 @@ export class Sim {
             const distanceSq =
               (ship[0] - bullet[0]) ** 2 + (ship[1] - bullet[1]) ** 2
             if (distanceSq < (0.8 * S.shipSize) ** 2) {
-              this.ships.kill(shipI, events)
+              if (!this.config.immortal) {
+                this.ships.kill(shipI, events)
+              }
               this.bullets.timeToLive[bulletI] = 0
             }
           }

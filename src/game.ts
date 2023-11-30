@@ -238,7 +238,7 @@ class KeyboardControl implements SimUpdate {
   }
 }
 
-interface Config {
+export interface Config extends Physics.Config {
   level: string
 }
 
@@ -273,7 +273,7 @@ export class Game extends Phaser.Scene {
   }
 
   create(): void {
-    this.sim = new Physics.Sim(this.cache.json.get("level"))
+    this.sim = new Physics.Sim(this.cache.json.get("level"), this.config!)
     this.physicsTimeOverflow = 0
     this.livesRemaining = S.playerLives
     this.victory = null

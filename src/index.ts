@@ -151,6 +151,15 @@ const PAUSE_TEXT =
   "\n\nSPACE          : (un)pause" +
   "\n\nALT+ENTER      : fullscreen"
 
+function getConfig(): Game.Config {
+  const p = new URLSearchParams(window.location.search)
+  return {
+    level: (p.get("level") as string) ?? "example",
+    startPosition: Number(p.get("start") ?? 0),
+    immortal: Boolean(p.get("immortal") ?? "false"),
+  }
+}
+
 class UI extends Phaser.Scene {
   gameScene?: Game.Game
   hud?: Hud
@@ -167,9 +176,7 @@ class UI extends Phaser.Scene {
   }
 
   create(): void {
-    const level =
-      new URLSearchParams(window.location.search).get("level") ?? "example"
-    this.scene.launch("game", { level })
+    this.scene.launch("game", getConfig())
     this.scene.bringToTop()
     this.gameScene = this.scene.get("game") as Game.Game
 
