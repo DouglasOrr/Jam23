@@ -87,10 +87,12 @@ export const S = {
 }
 
 export class Planet {
+  spacing: number
   radius: number
   height: number[]
 
   constructor(data: PlanetData) {
+    this.spacing = data.spacing
     this.radius = (data.height.length * data.spacing) / (2 * Math.PI)
     this.height = data.height.map((h: number) => this.radius + h)
     this.height.push(this.height[0]) // wrap-around (easier hit detection)
@@ -102,6 +104,18 @@ export class Planet {
     const i0 = Math.min(Math.floor(offset), this.height.length - 2)
     const i1 = i0 + 1
     return (i1 - offset) * this.height[i0] + (offset - i0) * this.height[i1]
+  }
+
+  getNormal(surfaceDistance: number): number {
+    const center = Math.round(surfaceDistance / this.spacing)
+    const left = center === 0 ? this.height.length - 2 : center - 1
+    const right = (center + 1) % (this.height.length - 1)
+    const dtheta = (2 * Math.PI) / (this.height.length - 1)
+    const h0 = this.height[left]
+    const h1 = this.height[right]
+    const dx = h1 * Math.sin(dtheta * right) - h0 * Math.sin(dtheta * left)
+    const dy = h1 * -Math.cos(dtheta * right) - h0 * -Math.cos(dtheta * left)
+    return Math.atan2(-dx, dy) - Math.PI / 2
   }
 }
 
@@ -236,10 +250,10 @@ class SurfaceObjects {
     surfacePosition.forEach(([d, h]) => {
       const angle = d / planet.radius - Math.PI
       this.position.push([
-        -(planet.radius + h) * Math.sin(angle),
+        (planet.radius + h) * -Math.sin(angle),
         (planet.radius + h) * Math.cos(angle),
       ])
-      this.angle.push(angle)
+      this.angle.push(planet.getNormal(d))
       this.alive.push(true)
     })
   }
