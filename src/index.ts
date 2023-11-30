@@ -8,5 +8,5 @@ export const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
   },
   backgroundColor: "#000000",
-  scene: [Menu.Menu, Menu.Credits, UI, Game],
+  scene: [Menu.Menu, Menu.Credits, Menu.Freeplay, UI, Game],
 })

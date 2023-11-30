@@ -1,12 +1,13 @@
 import * as Phaser from "phaser"
 import type * as Game from "./game"
+import * as Story from "./story"
 
 const S = {
   vpad: 0.05,
   hpad: 0.1,
   fontStyle: {
     color: "#fff",
-    fontSize: "2.5em",
+    fontSize: "2em",
   },
 }
 
@@ -17,6 +18,7 @@ function getDevConfig(): Game.Config | null {
       level: p.get("level") as string,
       startPosition: Number(p.get("start") ?? 0),
       immortal: (p.get("immortal") ?? "false") === "true",
+      impossible: (p.get("impossible") ?? "false") === "true",
     }
   } else return null
 }
@@ -97,10 +99,10 @@ export class Menu extends BaseMenu {
         },
       },
       {
-        title: "Free Play",
+        title: "Browse / Freeplay",
         key: "L",
         action: () => {
-          console.log("freeplay")
+          this.scene.start("menu-freeplay")
         },
       },
       {
@@ -131,6 +133,16 @@ export class Menu extends BaseMenu {
 
 // Submenus
 
+function createBackButton(scene: Phaser.Scene): Phaser.GameObjects.Text {
+  return createTextButton(scene, {
+    title: "Main menu",
+    key: "Z",
+    action: () => {
+      scene.scene.start("menu")
+    },
+  })
+}
+
 const CREDITS_TEXT =
   "Credits" +
   "\n\n  Phaser 3 : game library" +
@@ -143,22 +155,55 @@ export class Credits extends BaseMenu {
 
   create(): void {
     const text = this.add.text(0, 0, CREDITS_TEXT, S.fontStyle)
-    const button = this.add.existing(
-      createTextButton(this, {
-        title: "Back",
-        key: "ESC",
-        action: () => {
-          this.scene.stop()
-          this.scene.start("menu")
-        },
-      }).setOrigin(0, 0),
-    )
+    const backButton = this.add.existing(createBackButton(this).setOrigin(0, 0))
     setLayout(this, () => {
       const camera = this.cameras.main
       const vpad = S.vpad * camera.displayHeight
       const hpad = S.hpad * camera.displayWidth
       text.setPosition(hpad, vpad)
-      button.setPosition(hpad, vpad + text.displayHeight + 2 * vpad)
+      backButton.setPosition(hpad, vpad + text.displayHeight + vpad)
+    })
+    super.create()
+  }
+}
+
+export class Freeplay extends BaseMenu {
+  constructor() {
+    super({ key: "menu-freeplay" })
+  }
+
+  create(): void {
+    const levels = Story.levels.filter((s) => "key" in s) as Story.Level[]
+    const buttons = levels.map((level: Story.Level, i: number) =>
+      this.add.existing(
+        createTextButton(this, {
+          title:
+            level.title + (level.impossible ?? false ? " (IMPOSSIBLE)" : ""),
+          key: String.fromCharCode(65 + i),
+          action: () => {
+            this.scene.start("ui", {
+              level: level.key,
+              startPosition: 0,
+              impossible: level.impossible ?? false,
+              immortal: false,
+            })
+          },
+        }).setOrigin(0, 0),
+      ),
+    )
+    const backButton = this.add.existing(createBackButton(this).setOrigin(0, 0))
+    setLayout(this, () => {
+      const camera = this.cameras.main
+      const vpad = S.vpad * camera.displayHeight
+      const hpad = S.hpad * camera.displayWidth
+      const marginRatio = 2
+      buttons.forEach((button, i) => {
+        button.setPosition(hpad, vpad + i * button.displayHeight * marginRatio)
+      })
+      backButton.setPosition(
+        hpad,
+        vpad + buttons.length * buttons[0].displayHeight * marginRatio + vpad,
+      )
     })
     super.create()
   }

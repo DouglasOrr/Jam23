@@ -151,16 +151,8 @@ const PAUSE_TEXT =
   "\n\nSPACE          : (un)pause" +
   "\n\nALT+ENTER      : fullscreen"
 
-function getConfig(): Game.Config {
-  const p = new URLSearchParams(window.location.search)
-  return {
-    level: (p.get("level") as string) ?? "example",
-    startPosition: Number(p.get("start") ?? 0),
-    immortal: (p.get("immortal") ?? "false") === "true",
-  }
-}
-
 export class UI extends Phaser.Scene {
+  config?: Game.Config
   gameScene?: Game.Game
   hud?: Hud
   overlay?: Overlay
@@ -175,8 +167,12 @@ export class UI extends Phaser.Scene {
     this.load.image("ship", "ship.png")
   }
 
+  init(data: Record<string, any>): void {
+    this.config = data as Game.Config
+  }
+
   create(): void {
-    this.scene.launch("game", getConfig())
+    this.scene.launch("game", this.config)
     this.scene.bringToTop()
     this.gameScene = this.scene.get("game") as Game.Game
 

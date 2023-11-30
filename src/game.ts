@@ -240,6 +240,7 @@ class KeyboardControl implements SimUpdate {
 
 export interface Config extends Physics.Config {
   level: string
+  impossible: boolean
 }
 
 export class Game extends Phaser.Scene {
