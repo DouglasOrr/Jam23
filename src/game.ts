@@ -237,6 +237,7 @@ export interface Config extends Physics.Config {
 
 export class Game extends Phaser.Scene {
   config?: Config
+  levelKey?: string
   sim?: Physics.Sim
   controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
@@ -255,18 +256,22 @@ export class Game extends Phaser.Scene {
 
   init(data: Record<string, any>): void {
     this.config = data as Config
+    this.levelKey = `level-${this.config.level}`
   }
 
   preload(): void {
     this.load.image("bomb", "bomb.png")
     this.load.image("factory", "factory.png")
-    this.load.json("level", `levels/${this.config!.level}.json`)
+    this.load.json(this.levelKey!, `levels/${this.config!.level}.json`)
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
   }
 
   create(): void {
-    this.sim = new Physics.Sim(this.cache.json.get("level"), this.config!)
+    this.sim = new Physics.Sim(
+      this.cache.json.get(this.levelKey!),
+      this.config!,
+    )
     this.physicsTimeOverflow = 0
     this.livesRemaining = S.playerLives
     this.outcome = null
