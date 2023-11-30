@@ -3,7 +3,7 @@
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import ScriptAgent from "./scriptagent"
-import { setLayoutFn } from "./lib/util"
+import { downloadJSON, setLayoutFn } from "./lib/util"
 
 export const S = {
   fov: 75,
@@ -192,15 +192,6 @@ class Bombs implements SimUpdate {
   }
 }
 
-function downloadJSON(data: Record<string, unknown>, name: string): void {
-  const a = document.createElement("a")
-  a.href =
-    "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data))
-  a.download = name
-  a.click()
-  a.remove()
-}
-
 class KeyboardControl implements SimUpdate {
   index: number
   controls: {
@@ -252,7 +243,7 @@ export class Game extends Phaser.Scene {
   playerShip?: Ship
   physicsTimeOverflow: number = 0
   livesRemaining: number = 0
-  victory: boolean | null = null
+  outcome: "victory" | "defeat" | "timeout" | null = null
 
   factoryLiveCount(): number {
     return this.sim!.factories.alive.reduce((n, alive) => n + +alive, 0)
@@ -278,7 +269,7 @@ export class Game extends Phaser.Scene {
     this.sim = new Physics.Sim(this.cache.json.get("level"), this.config!)
     this.physicsTimeOverflow = 0
     this.livesRemaining = S.playerLives
-    this.victory = null
+    this.outcome = null
     this.controllers = []
     this.updaters = []
 
@@ -360,9 +351,9 @@ export class Game extends Phaser.Scene {
       }
       // Outcome
       this.livesRemaining -= +events.playerDeath
-      if (this.victory === null) {
+      if (this.outcome === null) {
         if (this.livesRemaining === 0 || this.factoryLiveCount() === 0) {
-          this.victory = this.livesRemaining !== 0
+          this.outcome = this.livesRemaining !== 0 ? "victory" : "defeat"
           this.time.delayedCall(1500, () => {
             this.scene.pause()
           })

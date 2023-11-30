@@ -174,10 +174,17 @@ export class UI extends Phaser.Scene {
     // Pause overlay
     this.overlay = new Overlay(this)
     this.gameScene.events.on("pause", () => {
-      const victory = this.gameScene!.victory
-      this.overlay?.mainText.setText(
-        victory === null ? PAUSE_TEXT : victory ? "you win" : "you lose",
-      )
+      const outcome = this.gameScene!.outcome
+      const text = this.overlay?.mainText
+      if (outcome === null) {
+        text?.setText(PAUSE_TEXT)
+      } else if (outcome === "victory") {
+        text?.setText("victory!")
+      } else if (outcome === "defeat") {
+        text?.setText("defeat.")
+      } else {
+        text?.setText("this is madness...")
+      }
       this.overlay?.setVisible(true)
     })
     this.gameScene.events.on("resume", () => {
@@ -185,34 +192,48 @@ export class UI extends Phaser.Scene {
     })
 
     // Menu controls
-    const keyboard = this.input.keyboard!
-    keyboard.on("keydown-SPACE", () => {
+    this.input.keyboard!.on("keydown", (e: KeyboardEvent) => {
       const gameScene = this.gameScene!
-      if (gameScene.victory === null) {
-        if (gameScene.scene.isPaused()) {
-          gameScene.scene.resume()
-        } else {
+      if (e.key === " ") {
+        if (gameScene.outcome === null) {
+          if (gameScene.scene.isPaused()) {
+            gameScene.scene.resume()
+          } else {
+            gameScene.scene.pause()
+          }
+        }
+      }
+      if (e.altKey || e.metaKey) {
+        if (e.key === "Enter") {
+          if (this.scale.isFullscreen) {
+            this.scale.stopFullscreen()
+          } else {
+            this.scale.startFullscreen()
+          }
+        }
+      }
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "z") {
+          this.scene.stop(gameScene)
+          this.scene.stop(this)
+          this.scene.start("menu")
+        }
+        // Secret hotkeys
+        if (e.key === "b") {
+          gameScene.scene.restart()
+        }
+        if (e.key === "v") {
+          gameScene.outcome = "victory"
           gameScene.scene.pause()
         }
-      }
-    })
-    keyboard.on("keydown-R", () => {
-      this.gameScene!.scene.restart()
-    })
-    keyboard.on("keydown-ENTER", (e: KeyboardEvent) => {
-      if (e.altKey || e.metaKey) {
-        if (this.scale.isFullscreen) {
-          this.scale.stopFullscreen()
-        } else {
-          this.scale.startFullscreen()
+        if (e.key === "c") {
+          gameScene.outcome = "defeat"
+          gameScene.scene.pause()
         }
-      }
-    })
-    keyboard.on("keydown-Z", (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        this.scene.stop(this.gameScene)
-        this.scene.stop(this)
-        this.scene.start("menu")
+        if (e.key === "x") {
+          gameScene.outcome = "timeout"
+          gameScene.scene.pause()
+        }
       }
     })
 
