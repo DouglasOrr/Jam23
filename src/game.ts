@@ -9,7 +9,7 @@ export const S = {
   bulletRadius: 0.2,
   factoryWidth: 7,
   friendlyAlpha: 0.4,
-  playerLives: 3,
+  playerLives: 4,
 }
 
 interface SimUpdate {
