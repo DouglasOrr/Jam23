@@ -62,5 +62,6 @@ if __name__ == "__main__":
         f" Build {src} -> {dest}",
         file=sys.stderr,
     )
-    dest.unlink()
+    if dest.exists():
+        dest.unlink()
     dest.write_text(build(imageio.v3.imread(src)))
