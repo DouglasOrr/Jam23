@@ -234,7 +234,12 @@ class KeyboardControl implements SimUpdate {
   }
 }
 
+interface Config {
+  level: string
+}
+
 export class Game extends Phaser.Scene {
+  config?: Config
   sim?: Physics.Sim
   controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
@@ -253,10 +258,14 @@ export class Game extends Phaser.Scene {
     super({ key: "game" })
   }
 
+  init(data: Record<string, any>): void {
+    this.config = data as Config
+  }
+
   preload(): void {
     this.load.image("bomb", "bomb.png")
     this.load.image("factory", "factory.png")
-    this.load.json("level", "levels/example.json")
+    this.load.json("level", `levels/${this.config!.level}.json`)
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
   }

@@ -160,7 +160,9 @@ class UI extends Phaser.Scene {
   }
 
   create(): void {
-    this.scene.launch("game")
+    const level =
+      new URLSearchParams(window.location.search).get("level") ?? "example"
+    this.scene.launch("game", { level })
     this.scene.bringToTop()
     this.gameScene = this.scene.get("game") as Game.Game
 
