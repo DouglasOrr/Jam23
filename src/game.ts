@@ -232,7 +232,9 @@ class KeyboardControl implements SimUpdate {
 
 export interface Config extends Physics.Config {
   level: string
-  impossible: boolean
+  storyMode: boolean
+  infiniteLives: boolean
+  timeout: number
 }
 
 export class Game extends Phaser.Scene {
@@ -273,7 +275,7 @@ export class Game extends Phaser.Scene {
       this.config!,
     )
     this.physicsTimeOverflow = 0
-    this.livesRemaining = S.playerLives
+    this.livesRemaining = S.playerLives * +!this.config!.infiniteLives
     this.outcome = null
     this.controllers = []
     this.updaters = []
@@ -341,7 +343,14 @@ export class Game extends Phaser.Scene {
     }
   }
 
-  update(_time: number, delta: number): void {
+  #setOutcome(outcome: "victory" | "defeat" | "timeout"): void {
+    this.outcome = outcome
+    this.time.delayedCall(1500, () => {
+      this.scene.pause()
+    })
+  }
+
+  update(time: number, delta: number): void {
     this.physicsTimeOverflow += delta / 1000
     if (this.sim !== undefined) {
       // Control
@@ -355,13 +364,22 @@ export class Game extends Phaser.Scene {
         this.physicsTimeOverflow -= Physics.S.dt
       }
       // Outcome
-      this.livesRemaining -= +events.playerDeath
+      this.livesRemaining -= +events.playerDeath * +!this.config!.infiniteLives
       if (this.outcome === null) {
-        if (this.livesRemaining === 0 || this.factoryLiveCount() === 0) {
-          this.outcome = this.livesRemaining !== 0 ? "victory" : "defeat"
-          this.time.delayedCall(1500, () => {
-            this.scene.pause()
-          })
+        if (this.factoryLiveCount() === 0) {
+          this.#setOutcome("victory")
+        }
+        const hasTimeout = this.config?.timeout !== 0
+        if (this.livesRemaining === 0 && !this.config!.infiniteLives) {
+          // If timeout is set, we assume the fight is "impossible", so all defeat outcomes
+          // become timeouts
+          this.#setOutcome(hasTimeout ? "timeout" : "defeat")
+        }
+        if (
+          hasTimeout &&
+          (time - this.time.startTime) / 1000 >= this.config!.timeout
+        ) {
+          this.#setOutcome("timeout")
         }
       }
       // Graphics

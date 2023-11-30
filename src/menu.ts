@@ -1,6 +1,6 @@
 import * as Phaser from "phaser"
 import type * as Game from "./game"
-import * as Story from "./story"
+import { LEVELS } from "./story"
 import { setLayoutFn } from "./lib/util"
 
 const S = {
@@ -19,7 +19,9 @@ function getDevConfig(): Game.Config | null {
       level: p.get("level") as string,
       startPosition: Number(p.get("start") ?? 0),
       immortal: (p.get("immortal") ?? "false") === "true",
-      impossible: (p.get("impossible") ?? "false") === "true",
+      storyMode: false,
+      timeout: 0,
+      infiniteLives: false,
     }
   } else return null
 }
@@ -49,7 +51,7 @@ function createTextButton(
 class BaseMenu extends Phaser.Scene {
   create(): void {
     this.input.keyboard!.on("keydown-ENTER", (e: KeyboardEvent) => {
-      if (e.altKey) {
+      if (e.altKey || e.metaKey) {
         if (this.scale.isFullscreen) {
           this.scale.stopFullscreen()
         } else {
@@ -87,7 +89,7 @@ export class Menu extends BaseMenu {
         title: "Play",
         key: "P",
         action: () => {
-          console.log("play")
+          this.scene.start("story")
         },
       },
       {
@@ -99,7 +101,7 @@ export class Menu extends BaseMenu {
       },
       {
         title: "Credits",
-        key: "O",
+        key: "K",
         action: () => {
           this.scene.start("menu-credits")
         },
@@ -165,18 +167,19 @@ export class Freeplay extends BaseMenu {
   }
 
   create(): void {
-    const levels = Story.levels.filter((s) => "key" in s) as Story.Level[]
-    const buttons = levels.map((level: Story.Level, i: number) =>
+    const buttons = LEVELS.map((level, i) =>
       this.add.existing(
         createTextButton(this, {
           title:
-            level.title + (level.impossible ?? false ? " (IMPOSSIBLE)" : ""),
+            level.title + (level.timeout !== undefined ? " (IMPOSSIBLE)" : ""),
           key: String.fromCharCode(65 + i),
           action: () => {
             this.scene.start("ui", {
               level: level.key,
               startPosition: 0,
-              impossible: level.impossible ?? false,
+              storyMode: false,
+              infiniteLives: false,
+              timeout: 0,
               immortal: false,
             })
           },
@@ -196,6 +199,85 @@ export class Freeplay extends BaseMenu {
         hpad,
         vpad + buttons.length * buttons[0].displayHeight * marginRatio + vpad,
       )
+    })
+    super.create()
+  }
+}
+
+// Story
+
+const FINISHED = {
+  title: "Congratulations!",
+  text:
+    "You've done it. Not just you, of course." +
+    "\nBut well done anyway." +
+    "\nTake the weekend off, you deserve it!",
+}
+
+export class Story extends BaseMenu {
+  index?: number = 0
+
+  constructor() {
+    super({ key: "story" })
+  }
+
+  create(): void {
+    const title = this.add
+      .text(0, 0, "", {
+        color: "#fff",
+        fontSize: "2.5em",
+      })
+      .setOrigin(0, 0)
+    const body = this.add
+      .text(0, 0, "", { color: "#fff", fontSize: "2em" })
+      .setOrigin(0, 0)
+    const continueButton = this.add.existing(
+      createTextButton(this, {
+        title: "Continue",
+        key: "SPACE",
+        action: () => {
+          if (this.index! < LEVELS.length) {
+            const level = LEVELS[this.index!]
+            this.scene.launch("ui", {
+              level: level.key,
+              startPosition: 0,
+              storyMode: true,
+              infiniteLives: level.infiniteLives ?? false,
+              timeout: level.timeout ?? 0,
+              immortal: false,
+            })
+            this.scene.setVisible(false)
+            this.scene.pause()
+          } else {
+            this.scene.start("menu")
+          }
+        },
+      }),
+    )
+
+    this.index = -1
+    const updateContents = (): void => {
+      this.index! += 1
+      if (this.index! < LEVELS.length) {
+        const level = LEVELS[this.index!]
+        title.setText(level.title)
+        body.setText((level.text ?? "").replaceAll("\n", "\n\n"))
+      } else {
+        title.setText(FINISHED.title)
+        body.setText(FINISHED.text)
+      }
+    }
+    updateContents()
+    this.events.on("resume", updateContents)
+    this.events.once("shutdown", () => {
+      this.events.removeListener("resume", updateContents)
+    })
+    setLayoutFn(this, () => {
+      const camera = this.cameras.main
+      const pad = 0.05 * Math.min(camera.displayWidth, camera.displayHeight)
+      title.setPosition(pad, pad)
+      body.setPosition(pad, 2 * pad + title.displayHeight)
+      continueButton.setPosition(pad, body.y + body.displayHeight + pad)
     })
     super.create()
   }

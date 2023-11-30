@@ -1,23 +1,22 @@
 export interface Level {
   key: string
   title: string
-  impossible?: boolean
+  text?: string
+  timeout?: number
+  infiniteLives?: boolean
 }
 
-export interface Dialogue {
-  text: string
-}
-
-type Stage = Level | Dialogue
-
-export const levels: Stage[] = [
+export const LEVELS: Level[] = [
   {
+    key: "a0",
+    title: "First steps",
     text:
       "Your first day? Great, another one." +
       "\nI'll keep it simple, then..." +
-      "\nDON'T CRASH & DESTROY all the factories",
+      "\n 1) DON'T CRASH" +
+      "\n 2) DESTROY all the factories",
+    infiniteLives: true,
   },
-  { key: "a0", title: "First steps" },
   { key: "a1", title: "Exploration" },
   { key: "a2", title: "Firing back" },
   { key: "a3", title: "Getting serious" },
@@ -26,7 +25,7 @@ export const levels: Stage[] = [
   {
     key: "b",
     title: "Making it count",
-    impossible: true,
+    timeout: 120,
   },
   { key: "c0", title: "Friends!" },
   { key: "c1", title: "Working together" },

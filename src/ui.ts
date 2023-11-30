@@ -150,7 +150,10 @@ const VICTORY_TEXT = "victory!" + "\n\n\nSPACE : continue"
 
 const DEFEAT_TEXT = "defeat." + "\n\n\nSPACE : try again"
 
-const TIMEOUT_TEXT = "this is madness..." + "\n\n\nSPACE : continue"
+const TIMEOUT_TEXT =
+  "we can't keep this up,\nthis is madness..." +
+  "\n\nwe need to SCALE." +
+  "\n\n\nSPACE : continue"
 
 export class UI extends Phaser.Scene {
   config?: Game.Config
@@ -172,9 +175,9 @@ export class UI extends Phaser.Scene {
     this.config = data as Game.Config
   }
 
-  #returnToMenu(): void {
+  #returnToMenu(key: string): void {
     this.scene.stop(this.gameScene)
-    this.scene.start("menu")
+    this.scene.start(key)
   }
 
   create(): void {
@@ -218,7 +221,15 @@ export class UI extends Phaser.Scene {
             gameScene.scene.restart()
           } else {
             // victory | timeout
-            this.#returnToMenu()
+            if (this.config!.storyMode) {
+              const story = this.scene.get("story")
+              this.scene.stop()
+              gameScene.scene.stop()
+              story.scene.resume()
+              story.scene.setVisible(true)
+            } else {
+              this.#returnToMenu("menu-freeplay")
+            }
           }
         }
       }
@@ -235,7 +246,7 @@ export class UI extends Phaser.Scene {
 
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "z") {
-          this.#returnToMenu()
+          this.#returnToMenu("menu")
         }
 
         // Secret hotkeys

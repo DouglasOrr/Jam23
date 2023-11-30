@@ -524,8 +524,8 @@ export function createGridPattern(n: number): Vec2[] {
 }
 
 export interface Config {
-  immortal: boolean
   startPosition: number
+  immortal: boolean
 }
 
 export class Sim {
