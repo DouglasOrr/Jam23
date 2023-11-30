@@ -142,9 +142,15 @@ const PAUSE_TEXT =
   "(paused)\n" +
   "\n\n← ↓ → | A S D  : thrusters" +
   "\n\nV              : drop bomb" +
-  "\n\nSPACE          : (un)pause" +
+  "\n\n\nSPACE          : (un)pause" +
   "\n\nALT+ENTER      : fullscreen" +
   "\n\nCTRL+Z         : quit to main menu (lose progress)"
+
+const VICTORY_TEXT = "victory!" + "\n\n\nSPACE : continue"
+
+const DEFEAT_TEXT = "defeat." + "\n\n\nSPACE : try again"
+
+const TIMEOUT_TEXT = "this is madness..." + "\n\n\nSPACE : continue"
 
 export class UI extends Phaser.Scene {
   config?: Game.Config
@@ -166,6 +172,11 @@ export class UI extends Phaser.Scene {
     this.config = data as Game.Config
   }
 
+  #returnToMenu(): void {
+    this.scene.stop(this.gameScene)
+    this.scene.start("menu")
+  }
+
   create(): void {
     this.scene.launch("game", this.config)
     this.scene.bringToTop()
@@ -179,11 +190,11 @@ export class UI extends Phaser.Scene {
       if (outcome === null) {
         text?.setText(PAUSE_TEXT)
       } else if (outcome === "victory") {
-        text?.setText("victory!")
+        text?.setText(VICTORY_TEXT)
       } else if (outcome === "defeat") {
-        text?.setText("defeat.")
+        text?.setText(DEFEAT_TEXT)
       } else {
-        text?.setText("this is madness...")
+        text?.setText(TIMEOUT_TEXT)
       }
       this.overlay?.setVisible(true)
     })
@@ -194,6 +205,7 @@ export class UI extends Phaser.Scene {
     // Menu controls
     this.input.keyboard!.on("keydown", (e: KeyboardEvent) => {
       const gameScene = this.gameScene!
+
       if (e.key === " ") {
         if (gameScene.outcome === null) {
           if (gameScene.scene.isPaused()) {
@@ -201,8 +213,16 @@ export class UI extends Phaser.Scene {
           } else {
             gameScene.scene.pause()
           }
+        } else if (gameScene.scene.isPaused()) {
+          if (gameScene.outcome === "defeat") {
+            gameScene.scene.restart()
+          } else {
+            // victory | timeout
+            this.#returnToMenu()
+          }
         }
       }
+
       if (e.altKey || e.metaKey) {
         if (e.key === "Enter") {
           if (this.scale.isFullscreen) {
@@ -212,12 +232,12 @@ export class UI extends Phaser.Scene {
           }
         }
       }
+
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "z") {
-          this.scene.stop(gameScene)
-          this.scene.stop(this)
-          this.scene.start("menu")
+          this.#returnToMenu()
         }
+
         // Secret hotkeys
         if (e.key === "b") {
           gameScene.scene.restart()
