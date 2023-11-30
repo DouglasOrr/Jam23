@@ -8,10 +8,11 @@ SRC_ROOT = "assets/src/levels"
 DEST_ROOT = "assets/dist/levels"
 
 
-def build(f: Path) -> None:
+def build(src: Path) -> None:
     try:
+        dest = DEST_ROOT / src.relative_to(SRC_ROOT).with_suffix(".json")
         subprocess.check_call(
-            ["python", Path(__file__).parent / "build_level.py", str(f), DEST_ROOT]
+            ["python", Path(__file__).parent / "build_level.py", str(src), str(dest)]
         )
     except subprocess.CalledProcessError as e:
         print(e, file=sys.stderr)

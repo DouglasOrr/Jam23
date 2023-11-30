@@ -53,15 +53,13 @@ def build(data: np.ndarray) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("src", type=Path)
-    parser.add_argument("dest_folder", type=Path)
+    parser.add_argument("dest", type=Path)
     args = parser.parse_args()
-    src = args.src
-    dest = args.dest_folder / src.with_suffix(".json").name
     print(
         f"[{datetime.datetime.now().time().isoformat(timespec='seconds')}]"
-        f" Build {src} -> {dest}",
+        f" Build {args.src} -> {args.dest}",
         file=sys.stderr,
     )
-    if dest.exists():
-        dest.unlink()
-    dest.write_text(build(imageio.v3.imread(src)))
+    if args.dest.exists():
+        args.dest.unlink()
+    args.dest.write_text(build(imageio.v3.imread(args.src)))
