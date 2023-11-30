@@ -3,6 +3,7 @@
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import * as Game from "./game"
+import { setLayoutFn } from "./lib/util"
 
 class Hud extends Phaser.GameObjects.Group {
   lives: Phaser.GameObjects.Sprite[]
@@ -47,50 +48,46 @@ class Hud extends Phaser.GameObjects.Group {
     this.add(this.bombReloadSprite, /* addToScene */ true)
 
     // Layout
-    this.#relayout()
-    scene.scale.on("resize", () => {
-      this.#relayout()
-    })
-  }
+    setLayoutFn(scene, () => {
+      const camera = this.scene.cameras.main
+      const maxWH = Math.max(camera.displayWidth, camera.displayHeight)
+      const pad = 0.0075 * maxWH
 
-  #relayout(): void {
-    const camera = this.scene.cameras.main
-    const maxWH = Math.max(camera.displayWidth, camera.displayHeight)
-    const pad = 0.0075 * maxWH
-
-    // Lives
-    let offset = pad
-    this.lives.forEach((sprite) => {
-      const size = 0.018 * maxWH
-      sprite
-        .setScale(size / sprite.width)
-        .setPosition(camera.displayWidth - offset, pad)
-      offset += pad + size
+      // Lives
+      let offset = pad
+      this.lives.forEach((sprite) => {
+        const size = 0.018 * maxWH
+        sprite
+          .setScale(size / sprite.width)
+          .setPosition(camera.displayWidth - offset, pad)
+        offset += pad + size
+      })
+      // Factories
+      offset = pad
+      this.factories.forEach((sprite) => {
+        const size = 0.025 * maxWH
+        sprite.setScale(size / sprite.width).setPosition(offset, pad)
+        offset += pad + size
+      })
+      // Reload
+      this.bombReloadWidth =
+        this.lives.length * (this.lives[0].displayWidth + pad) - pad
+      this.bombReloadBar
+        .setPosition(
+          camera.displayWidth - pad,
+          this.lives[0].displayHeight + 2 * pad,
+        )
+        .setDisplaySize(this.bombReloadWidth, 0.015 * camera.displayHeight)
+      this.bombReloadSprite
+        .setPosition(
+          camera.displayWidth - pad - this.bombReloadWidth / 2,
+          this.bombReloadBar.y + this.bombReloadBar.displayHeight / 2,
+        )
+        .setScale(
+          (1.5 * this.bombReloadBar.displayHeight) /
+            this.bombReloadSprite.height,
+        )
     })
-    // Factories
-    offset = pad
-    this.factories.forEach((sprite) => {
-      const size = 0.025 * maxWH
-      sprite.setScale(size / sprite.width).setPosition(offset, pad)
-      offset += pad + size
-    })
-    // Reload
-    this.bombReloadWidth =
-      this.lives.length * (this.lives[0].displayWidth + pad) - pad
-    this.bombReloadBar
-      .setPosition(
-        camera.displayWidth - pad,
-        this.lives[0].displayHeight + 2 * pad,
-      )
-      .setDisplaySize(this.bombReloadWidth, 0.015 * camera.displayHeight)
-    this.bombReloadSprite
-      .setPosition(
-        camera.displayWidth - pad - this.bombReloadWidth / 2,
-        this.bombReloadBar.y + this.bombReloadBar.displayHeight / 2,
-      )
-      .setScale(
-        (1.5 * this.bombReloadBar.displayHeight) / this.bombReloadSprite.height,
-      )
   }
 
   update(game: Game.Game): void {
@@ -111,12 +108,11 @@ class Hud extends Phaser.GameObjects.Group {
 }
 
 class Overlay extends Phaser.GameObjects.Group {
-  background: Phaser.GameObjects.Rectangle
   mainText: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene) {
     super(scene)
-    this.background = new Phaser.GameObjects.Rectangle(
+    const background = new Phaser.GameObjects.Rectangle(
       scene,
       0,
       0,
@@ -129,18 +125,16 @@ class Overlay extends Phaser.GameObjects.Group {
       color: "#fff",
       fontSize: "2em",
     }).setOrigin(0.5, 0.5)
-    this.addMultiple([this.background, this.mainText], /* addToScene */ true)
+    this.addMultiple([background, this.mainText], /* addToScene */ true)
     this.setVisible(false)
-    this.#relayout()
-    scene.scale.on("resize", () => {
-      this.#relayout()
+    setLayoutFn(scene, () => {
+      const camera = this.scene.cameras.main
+      background.setSize(camera.displayWidth, camera.displayHeight)
+      this.mainText.setPosition(
+        camera.displayWidth / 2,
+        camera.displayHeight / 2,
+      )
     })
-  }
-
-  #relayout(): void {
-    const camera = this.scene.cameras.main
-    this.background.setSize(camera.displayWidth, camera.displayHeight)
-    this.mainText.setPosition(camera.displayWidth / 2, camera.displayHeight / 2)
   }
 }
 
@@ -149,7 +143,8 @@ const PAUSE_TEXT =
   "\n\n← ↓ → | A S D  : thrusters" +
   "\n\nV              : drop bomb" +
   "\n\nSPACE          : (un)pause" +
-  "\n\nALT+ENTER      : fullscreen"
+  "\n\nALT+ENTER      : fullscreen" +
+  "\n\nCTRL+Z         : quit to main menu (lose progress)"
 
 export class UI extends Phaser.Scene {
   config?: Game.Config
@@ -205,12 +200,19 @@ export class UI extends Phaser.Scene {
       this.gameScene!.scene.restart()
     })
     keyboard.on("keydown-ENTER", (e: KeyboardEvent) => {
-      if (e.altKey) {
+      if (e.altKey || e.metaKey) {
         if (this.scale.isFullscreen) {
           this.scale.stopFullscreen()
         } else {
           this.scale.startFullscreen()
         }
+      }
+    })
+    keyboard.on("keydown-Z", (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        this.scene.stop(this.gameScene)
+        this.scene.stop(this)
+        this.scene.start("menu")
       }
     })
 

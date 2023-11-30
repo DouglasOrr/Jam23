@@ -1,6 +1,7 @@
 import * as Phaser from "phaser"
 import type * as Game from "./game"
 import * as Story from "./story"
+import { setLayoutFn } from "./lib/util"
 
 const S = {
   vpad: 0.05,
@@ -43,15 +44,6 @@ function createTextButton(
   )
     .setInteractive()
     .on("pointerdown", spec.action)
-}
-
-function setLayout(scene: Phaser.Scene, fn: () => void): void {
-  fn()
-  scene.scale.on("resize", () => {
-    if (scene.scene.isActive()) {
-      fn()
-    }
-  })
 }
 
 class BaseMenu extends Phaser.Scene {
@@ -116,7 +108,7 @@ export class Menu extends BaseMenu {
     const buttons = options.map((x) =>
       this.add.existing(createTextButton(this, x).setOrigin(0, 0.5)),
     )
-    setLayout(this, () => {
+    setLayoutFn(this, () => {
       const camera = this.cameras.main
       const vpad = S.vpad * camera.displayHeight
       const hpad = S.hpad * camera.displayWidth
@@ -156,7 +148,7 @@ export class Credits extends BaseMenu {
   create(): void {
     const text = this.add.text(0, 0, CREDITS_TEXT, S.fontStyle)
     const backButton = this.add.existing(createBackButton(this).setOrigin(0, 0))
-    setLayout(this, () => {
+    setLayoutFn(this, () => {
       const camera = this.cameras.main
       const vpad = S.vpad * camera.displayHeight
       const hpad = S.hpad * camera.displayWidth
@@ -192,7 +184,7 @@ export class Freeplay extends BaseMenu {
       ),
     )
     const backButton = this.add.existing(createBackButton(this).setOrigin(0, 0))
-    setLayout(this, () => {
+    setLayoutFn(this, () => {
       const camera = this.cameras.main
       const vpad = S.vpad * camera.displayHeight
       const hpad = S.hpad * camera.displayWidth

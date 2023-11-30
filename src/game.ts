@@ -3,6 +3,7 @@
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import ScriptAgent from "./scriptagent"
+import { setLayoutFn } from "./lib/util"
 
 export const S = {
   fov: 75,
@@ -317,8 +318,7 @@ export class Game extends Phaser.Scene {
     // )
 
     // Camera
-    this.#updateCamera(true)
-    this.scale.on("resize", () => {
+    setLayoutFn(this, () => {
       this.#updateCamera(true)
     })
 

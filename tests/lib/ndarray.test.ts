@@ -1,4 +1,4 @@
-import { NdArray } from "../src/ndarray"
+import { NdArray } from "../../src/lib/ndarray"
 
 test("new NdArray", () => {
   const a = new NdArray([1, 2, 3]).fill_(100)

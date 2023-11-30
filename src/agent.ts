@@ -1,6 +1,6 @@
 import * as Physics from "./physics"
-import * as T from "./tensors"
-import { NdArray, assertEquals } from "./ndarray"
+import * as T from "./lib/tensors"
+import { NdArray, assertEquals } from "./lib/ndarray"
 
 export const S = {
   // Features

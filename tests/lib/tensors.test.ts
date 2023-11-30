@@ -1,5 +1,5 @@
-import * as T from "../src/tensors"
-import { NdArray, assertArrayEquals } from "../src/ndarray"
+import * as T from "../../src/lib/tensors"
+import { NdArray, assertArrayEquals } from "../../src/lib/ndarray"
 
 // Ops
 
