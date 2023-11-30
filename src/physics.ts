@@ -76,7 +76,7 @@ export const S = {
   maxBombs: 50,
   bombTimeToLive: 10,
   bombSize: 1.5,
-  bombBlastRadius: 5,
+  bombBlastRadius: 6,
   // Turret
   turretRotationRate: [0.5, 0.5, 1.0, 10.0],
   bulletSpeed: [15, 20, 20, 30],

@@ -156,7 +156,7 @@ function getConfig(): Game.Config {
   return {
     level: (p.get("level") as string) ?? "example",
     startPosition: Number(p.get("start") ?? 0),
-    immortal: Boolean(p.get("immortal") ?? "false"),
+    immortal: (p.get("immortal") ?? "false") === "true",
   }
 }
 

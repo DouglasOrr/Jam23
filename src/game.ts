@@ -362,7 +362,7 @@ export class Game extends Phaser.Scene {
       if (this.victory === null) {
         if (this.livesRemaining === 0 || this.factoryLiveCount() === 0) {
           this.victory = this.livesRemaining !== 0
-          this.time.delayedCall(2000, () => {
+          this.time.delayedCall(1500, () => {
             this.scene.pause()
           })
         }
