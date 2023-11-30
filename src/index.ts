@@ -127,7 +127,7 @@ class Overlay extends Phaser.GameObjects.Group {
     ).setOrigin(0, 0)
     this.mainText = new Phaser.GameObjects.Text(scene, 0, 0, "paused", {
       color: "#fff",
-      fontSize: "3em",
+      fontSize: "2em",
     }).setOrigin(0.5, 0.5)
     this.addMultiple([this.background, this.mainText], /* addToScene */ true)
     this.setVisible(false)
@@ -143,6 +143,13 @@ class Overlay extends Phaser.GameObjects.Group {
     this.mainText.setPosition(camera.displayWidth / 2, camera.displayHeight / 2)
   }
 }
+
+const PAUSE_TEXT =
+  "paused\n" +
+  "\n\n← ↓ → | A S D  : thrusters" +
+  "\n\nV              : drop bomb" +
+  "\n\nSPACE          : (un)pause" +
+  "\n\nALT+ENTER      : fullscreen"
 
 class UI extends Phaser.Scene {
   gameScene?: Game.Game
@@ -171,7 +178,7 @@ class UI extends Phaser.Scene {
     this.gameScene.events.on("pause", () => {
       const victory = this.gameScene!.victory
       this.overlay?.mainText.setText(
-        victory === null ? "paused" : victory ? "you win" : "you lose",
+        victory === null ? PAUSE_TEXT : victory ? "you win" : "you lose",
       )
       this.overlay?.setVisible(true)
     })

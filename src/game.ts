@@ -205,9 +205,11 @@ class KeyboardControl implements SimUpdate {
   controls: {
     left: Phaser.Input.Keyboard.Key
     right: Phaser.Input.Keyboard.Key
-    up: Phaser.Input.Keyboard.Key
-    retro: Phaser.Input.Keyboard.Key
-    dropBomb: Phaser.Input.Keyboard.Key
+    down: Phaser.Input.Keyboard.Key
+    A: Phaser.Input.Keyboard.Key
+    S: Phaser.Input.Keyboard.Key
+    D: Phaser.Input.Keyboard.Key
+    V: Phaser.Input.Keyboard.Key
   }
 
   constructor(scene: Phaser.Scene, index: number, sim: Physics.Sim) {
@@ -216,21 +218,23 @@ class KeyboardControl implements SimUpdate {
     this.controls = {
       left: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
       right: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
-      up: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
-      retro: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
-      dropBomb: keyboard.addKey("x"),
+      down: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+      A: keyboard.addKey("a"),
+      S: keyboard.addKey("s"),
+      D: keyboard.addKey("d"),
+      V: keyboard.addKey("v"),
     }
-    keyboard.on("keydown-S", () => {
+    keyboard.on("keydown-P", () => {
       downloadJSON(sim.log, "log.json")
     })
   }
 
   update(sim: Physics.Sim): void {
     const shipControl = sim.ships.control[this.index]
-    shipControl.left = this.controls.left.isDown
-    shipControl.right = this.controls.right.isDown
-    shipControl.retro = this.controls.retro.isDown
-    shipControl.dropBomb = this.controls.dropBomb.isDown
+    shipControl.left = this.controls.left.isDown || this.controls.A.isDown
+    shipControl.retro = this.controls.down.isDown || this.controls.S.isDown
+    shipControl.right = this.controls.right.isDown || this.controls.D.isDown
+    shipControl.dropBomb = this.controls.V.isDown
   }
 }
 
@@ -244,8 +248,6 @@ export class Game extends Phaser.Scene {
   controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
   playerShip?: Ship
-  controls: Phaser.Input.Keyboard.Key[] = []
-  controlBomb?: Phaser.Input.Keyboard.Key
   physicsTimeOverflow: number = 0
   livesRemaining: number = 0
   victory: boolean | null = null
