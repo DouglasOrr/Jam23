@@ -145,7 +145,7 @@ class Overlay extends Phaser.GameObjects.Group {
 }
 
 const PAUSE_TEXT =
-  "paused\n" +
+  "(paused)\n" +
   "\n\n← ↓ → | A S D  : thrusters" +
   "\n\nV              : drop bomb" +
   "\n\nSPACE          : (un)pause" +

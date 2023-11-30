@@ -1,5 +1,6 @@
 import { UI } from "./ui"
 import { Game } from "./game"
+import * as Menu from "./menu"
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -7,5 +8,5 @@ export const game = new Phaser.Game({
     mode: Phaser.Scale.RESIZE,
   },
   backgroundColor: "#000000",
-  scene: [UI, Game],
+  scene: [Menu.Menu, Menu.Credits, UI, Game],
 })
