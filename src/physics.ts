@@ -611,7 +611,7 @@ export class Sim {
   }
 
   update(events: Events): void {
-    this.#log()
+    // this.#log()
     this.ships.update(this, events)
     this.turrets.update(this)
     this.bullets.update(this)

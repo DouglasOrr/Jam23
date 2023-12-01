@@ -3,7 +3,7 @@
 import * as Phaser from "phaser"
 import * as Physics from "./physics"
 import ScriptAgent from "./scriptagent"
-import { downloadJSON, setLayoutFn } from "./lib/util"
+import { setLayoutFn } from "./lib/util"
 
 export const S = {
   fov: 75,
@@ -216,9 +216,6 @@ class KeyboardControl implements SimUpdate {
       D: keyboard.addKey("d"),
       V: keyboard.addKey("v"),
     }
-    keyboard.on("keydown-P", () => {
-      downloadJSON(sim.log, "log.json")
-    })
   }
 
   update(sim: Physics.Sim): void {
