@@ -9,7 +9,8 @@ export const S = {
   fov: 75,
   bulletRadius: 0.2,
   factoryWidth: 7,
-  friendlyTint: 0xff666666,
+  playerTint: 0xffe0e0e0,
+  friendlyTint: 0xff777777,
   playerLives: 4,
 }
 
@@ -26,13 +27,14 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
   constructor(scene: Phaser.Scene, sim: Physics.Sim, index: number) {
     super(scene)
     this.index = index
+    const scale = this.index === 0 ? 1.03 : 0.97
     this.add(
       this.scene.add
         .image(0, 0, "ship")
         .setOrigin(0.5, 0.5)
-        .setDisplaySize(Physics.S.shipSize, Physics.S.shipSize)
+        .setDisplaySize(scale * Physics.S.shipSize, scale * Physics.S.shipSize)
         .setFlipY(true)
-        .setTint(this.index === 0 ? 0xffffffff : S.friendlyTint),
+        .setTint(this.index === 0 ? S.playerTint : S.friendlyTint),
     )
     this.burnLeft = this.#addBurner("left")
     this.burnRight = this.#addBurner("right")
@@ -125,6 +127,7 @@ class Turret implements SimUpdate {
   constructor(scene: Phaser.Scene, sim: Physics.Sim, index: number) {
     this.index = index
     const position = sim.turrets.position[this.index]
+    const tint = 0xffaaaaaa
     this.gun = scene.add
       .sprite(
         position[0],
@@ -134,11 +137,13 @@ class Turret implements SimUpdate {
       .setDisplaySize((3 / 8) * Physics.S.turretLength, Physics.S.turretLength)
       .setRotation(sim.turrets.turretAngle[this.index])
       .setOrigin(0.5, 0)
+      .setTint(tint)
     this.body = scene.add
       .sprite(position[0], position[1], "turret")
       .setOrigin(0.5, 0.5)
       .setDisplaySize(1.7, 1.7)
       .setRotation(sim.turrets.angle[this.index])
+      .setTint(tint)
   }
 
   update(sim: Physics.Sim): void {
@@ -187,7 +192,7 @@ class Bombs implements SimUpdate {
       const velocity = sim.bombs.velocity[i]
       this.bombs[i]
         .setVisible(0 < sim.bombs.timeToLive[i])
-        .setTint(sim.bombs.owner[i] === 0 ? 0xffffffff : S.friendlyTint)
+        .setTint(sim.bombs.owner[i] === 0 ? S.playerTint : S.friendlyTint)
         .setPosition(position[0], position[1])
         .setRotation(Math.atan2(velocity[0], -velocity[1]))
     }
@@ -351,7 +356,7 @@ export class Game extends Phaser.Scene {
         }
       }
     })
-    this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
+    this.add.polygon(0, 0, xy, 0xff303030).setOrigin(0, 0)
     this.updaters.push(new Bullets(this, this.sim))
     this.updaters.push(new Bombs(this, this.sim))
 
