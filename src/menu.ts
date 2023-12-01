@@ -83,7 +83,7 @@ export class Menu extends BaseMenu {
   }
 
   preload(): void {
-    this.load.audio("music", "music.mp3")
+    this.load.audio("music", ["music.ogg", "music.mp3"])
   }
 
   #updateMusicState(): void {
