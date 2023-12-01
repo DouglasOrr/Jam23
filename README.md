@@ -1,6 +1,10 @@
 # TINY
 
+[Play on itch.io](https://douglasorr.itch.io/tiny).
+
 A game about flying spaceships and dropping things, with the help of TINY, a scripted friendly AI.
+
+We are [MIT licensed](LICENSE), and [include assets](attribution.md) from zapsplat.com.
 
 Development:
 
