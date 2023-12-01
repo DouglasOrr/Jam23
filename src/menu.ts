@@ -75,11 +75,33 @@ class BaseMenu extends Phaser.Scene {
 }
 
 export class Menu extends BaseMenu {
+  music?: Phaser.Sound.BaseSound
+  playMusic: boolean = true
+
   constructor() {
     super({ key: "menu" })
   }
 
+  preload(): void {
+    this.load.audio("music", "music.mp3")
+  }
+
+  #updateMusicState(): void {
+    if (this.playMusic !== this.music!.isPlaying) {
+      if (this.playMusic) {
+        this.music!.play()
+      } else {
+        this.music!.stop()
+      }
+    }
+  }
+
   create(): void {
+    if (this.music === undefined) {
+      this.music = this.sound.add("music", { volume: 0.4, loop: true })
+    }
+    this.#updateMusicState()
+
     const devConfig = getDevConfig()
     if (devConfig !== null) {
       this.scene.start("ui", devConfig)
@@ -104,6 +126,14 @@ export class Menu extends BaseMenu {
         key: "K",
         action: () => {
           this.scene.start("menu-credits")
+        },
+      },
+      {
+        title: "Toggle music",
+        key: "M",
+        action: () => {
+          this.playMusic = !this.playMusic
+          this.#updateMusicState()
         },
       },
     ]
@@ -139,6 +169,7 @@ function createBackButton(scene: Phaser.Scene): Phaser.GameObjects.Text {
 
 const CREDITS_TEXT =
   "Credits" +
+  "\n\n  ZapSplat : sounds & music (www.zapsplat.com)" +
   "\n\n  Phaser 3 : game library" +
   "\n\n  vscode   : development IDE"
 

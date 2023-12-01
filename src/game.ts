@@ -264,6 +264,7 @@ export class Game extends Phaser.Scene {
     this.load.json(this.levelKey!, `levels/${this.config!.level}.json`)
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
+    this.load.audio("explosion", "explosion.mp3")
   }
 
   create(): void {
@@ -394,6 +395,9 @@ export class Game extends Phaser.Scene {
           alpha: { start: 0.4, end: 0, ease: "cube.out" },
         })
       })
+      if (events.explosions.length !== 0) {
+        this.sound.play("explosion", { volume: 1.0 })
+      }
       this.#updateCamera(false)
     }
   }

@@ -176,8 +176,8 @@ export class UI extends Phaser.Scene {
   }
 
   #returnToMenu(key: string): void {
-    this.scene.stop(this.gameScene)
     this.scene.start(key)
+    this.scene.stop(this.gameScene)
   }
 
   create(): void {
