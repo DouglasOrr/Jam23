@@ -335,9 +335,21 @@ export class Game extends Phaser.Scene {
       this.updaters.push(new Turret(this, this.sim, i))
     }
     const xy: number[][] = []
-    this.sim.planet.height.forEach((r: number, i: number) => {
-      const theta = (2 * Math.PI * i) / (this.sim!.planet.height.length - 1)
-      xy.push([r * Math.sin(theta), -r * Math.cos(theta)])
+    const planetHeight = this.sim.planet.height
+    const planetSpacing = this.sim.planet.spacing
+    planetHeight.forEach((r0: number, i: number) => {
+      const theta = (2 * Math.PI * i) / (planetHeight.length - 1)
+      xy.push([r0 * Math.sin(theta), r0 * -Math.cos(theta)])
+      if (i < planetHeight.length - 1) {
+        const nSub = 6
+        const dr = (planetHeight[i + 1] - r0) / (nSub + 1)
+        const dtheta = (2 * Math.PI) / ((planetHeight.length - 1) * (nSub + 1))
+        for (let j = 1; j <= nSub; ++j) {
+          const rj = r0 + dr * j + 0.06 * planetSpacing * (Math.random() - 0.5)
+          const tj = theta + dtheta * (j + 0.6 * (Math.random() - 0.5))
+          xy.push([rj * Math.sin(tj), rj * -Math.cos(tj)])
+        }
+      }
     })
     this.add.polygon(0, 0, xy, 0xff888888).setOrigin(0, 0)
     this.updaters.push(new Bullets(this, this.sim))
