@@ -15,7 +15,8 @@ export const LEVELS: Level[] = [
       "\nwho doesn't know their retro thruster from their elbow." +
       "\n\nI'll keep it simple, then..." +
       "\n 1) DON'T CRASH" +
-      "\n 2) DESTROY all the factories",
+      "\n 2) DESTROY all the factories" +
+      "\n\n(Oh, and we advise starting clockwise/RIGHT.)",
     infiniteLives: true,
   },
   {

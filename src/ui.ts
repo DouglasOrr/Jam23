@@ -231,22 +231,24 @@ export class UI extends Phaser.Scene {
         if (e.key === "z") {
           this.#returnToMenu("menu")
         }
+      }
 
+      if (e.altKey) {
         // Secret hotkeys
-        if (e.key === "b") {
-          gameScene.scene.restart()
-        }
-        if (e.key === "v") {
+        if (e.key === "p") {
           gameScene.outcome = "victory"
           gameScene.scene.pause()
         }
-        if (e.key === "c") {
+        if (e.key === "o") {
           gameScene.outcome = "defeat"
           gameScene.scene.pause()
         }
-        if (e.key === "x") {
+        if (e.key === "i") {
           gameScene.outcome = "timeout"
           gameScene.scene.pause()
+        }
+        if (e.key === "u") {
+          gameScene.scene.restart()
         }
       }
     })
