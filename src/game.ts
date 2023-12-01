@@ -200,12 +200,12 @@ class Explosions {
   update(scene: Phaser.Scene, explosions: Physics.Vec2[]): void {
     const config = {
       blendMode: "ADD",
-      lifespan: 400,
-      speed: 10,
-      frequency: 5,
-      duration: 200,
-      scale: { start: 0.02, end: 0.04, ease: "cube.out" },
-      alpha: { start: 1.0, end: 0.0, ease: "cube.out" },
+      lifespan: 500,
+      speed: 11,
+      frequency: 1,
+      duration: 350,
+      scale: { start: 0.01, end: 0.06, ease: "cube.out" },
+      alpha: { start: 0.4, end: 0, ease: "cube.out" },
     }
     const finishedEmitters = this.emitters.filter(
       (e) =>

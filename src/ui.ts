@@ -9,7 +9,6 @@ class Hud extends Phaser.GameObjects.Group {
   lives: Phaser.GameObjects.Sprite[]
   factories: Phaser.GameObjects.Sprite[]
   bombReloadBar: Phaser.GameObjects.Rectangle
-  bombReloadSprite: Phaser.GameObjects.Sprite
   bombReloadWidth: number
 
   constructor(scene: Phaser.Scene, game: Game.Game) {
@@ -40,12 +39,6 @@ class Hud extends Phaser.GameObjects.Group {
       0xffffffff,
     ).setOrigin(1, 0)
     this.add(this.bombReloadBar, /* addToScene */ true)
-    this.bombReloadSprite = new Phaser.GameObjects.Sprite(scene, 0, 0, "bomb")
-      .setTint(0xcc000000)
-      .setAlpha(0.1)
-      .setOrigin(0.5, 0.5)
-      .setRotation(-Math.PI / 2)
-    this.add(this.bombReloadSprite, /* addToScene */ true)
 
     // Layout
     setLayoutFn(scene, () => {
@@ -77,16 +70,7 @@ class Hud extends Phaser.GameObjects.Group {
           camera.displayWidth - pad,
           this.lives[0].displayHeight + 2 * pad,
         )
-        .setDisplaySize(this.bombReloadWidth, 0.015 * camera.displayHeight)
-      this.bombReloadSprite
-        .setPosition(
-          camera.displayWidth - pad - this.bombReloadWidth / 2,
-          this.bombReloadBar.y + this.bombReloadBar.displayHeight / 2,
-        )
-        .setScale(
-          (1.5 * this.bombReloadBar.displayHeight) /
-            this.bombReloadSprite.height,
-        )
+        .setDisplaySize(this.bombReloadWidth, 0.018 * camera.displayHeight)
     })
   }
 
@@ -103,7 +87,7 @@ class Hud extends Phaser.GameObjects.Group {
       this.bombReloadWidth * (1 - reload),
       this.bombReloadBar.displayHeight,
     )
-    this.bombReloadSprite.setVisible(reload === 0)
+    this.bombReloadBar.fillColor = reload === 0 ? 0xffffffff : 0xff888888
   }
 }
 
@@ -166,7 +150,6 @@ export class UI extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image("bomb", "bomb.png")
     this.load.image("factory", "factory.png")
     this.load.image("ship", "ship.png")
   }
