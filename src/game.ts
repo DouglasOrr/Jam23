@@ -192,6 +192,39 @@ class Bombs implements SimUpdate {
   }
 }
 
+class Explosions {
+  emitters: Phaser.GameObjects.Particles.ParticleEmitter[] = []
+
+  update(scene: Phaser.Scene, explosions: Physics.Vec2[]): void {
+    const config = {
+      blendMode: "ADD",
+      lifespan: 500,
+      speed: 11,
+      frequency: 1,
+      duration: 350,
+      scale: { start: 0.01, end: 0.06, ease: "cube.out" },
+      alpha: { start: 0.4, end: 0, ease: "cube.out" },
+    }
+    const finishedEmitters = this.emitters.filter(
+      (e) =>
+        scene.time.now - e.getData("startTime") >
+        config.lifespan + config.duration,
+    )
+    explosions.forEach((position) => {
+      if (finishedEmitters.length === 0) {
+        const newEmitter = scene.add.particles(0, 0, "smoke", config)
+        this.emitters.push(newEmitter)
+        finishedEmitters.push(newEmitter)
+      }
+      finishedEmitters
+        .pop()!
+        .setPosition(position[0], position[1])
+        .setData("startTime", scene.time.now)
+        .start()
+    })
+  }
+}
+
 class KeyboardControl implements SimUpdate {
   index: number
   controls: {
@@ -241,6 +274,7 @@ export class Game extends Phaser.Scene {
   controllers: SimUpdate[] = []
   updaters: SimUpdate[] = []
   playerShip?: Ship
+  explosions?: Explosions
   physicsTimeOverflow: number = 0
   livesRemaining: number = 0
   outcome: "victory" | "defeat" | "timeout" | null = null
@@ -313,6 +347,8 @@ export class Game extends Phaser.Scene {
     //   ),
     // )
 
+    this.explosions = new Explosions()
+
     // Camera
     setLayoutFn(this, () => {
       this.#updateCamera(true)
@@ -384,17 +420,7 @@ export class Game extends Phaser.Scene {
       this.updaters.forEach((x) => {
         x.update(this.sim!)
       })
-      events.explosions.forEach((position) => {
-        this.add.particles(position[0], position[1], "smoke", {
-          blendMode: "ADD",
-          lifespan: 500,
-          speed: 11,
-          frequency: 1,
-          duration: 350,
-          scale: { start: 0.01, end: 0.06, ease: "cube.out" },
-          alpha: { start: 0.4, end: 0, ease: "cube.out" },
-        })
-      })
+      this.explosions?.update(this, events.explosions)
       if (events.explosions.length !== 0) {
         this.sound.play("explosion", { volume: 1.0 })
       }
