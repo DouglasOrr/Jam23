@@ -119,26 +119,26 @@ class Factory implements SimUpdate {
 
 class Turret implements SimUpdate {
   index: number
-  body: Phaser.GameObjects.Shape
-  gun: Phaser.GameObjects.Line
+  body: Phaser.GameObjects.Sprite
+  gun: Phaser.GameObjects.Sprite
 
   constructor(scene: Phaser.Scene, sim: Physics.Sim, index: number) {
     this.index = index
     const position = sim.turrets.position[this.index]
-    this.body = scene.add.circle(position[0], position[1], 1, 0xffffffff)
     this.gun = scene.add
-      .line(
+      .sprite(
         position[0],
         position[1],
-        0,
-        0,
-        0,
-        Physics.S.turretLength,
-        0xffffffff,
+        `barrel${sim.turrets.level[this.index]}`,
       )
+      .setDisplaySize((3 / 8) * Physics.S.turretLength, Physics.S.turretLength)
       .setRotation(sim.turrets.turretAngle[this.index])
-      .setLineWidth(0.2)
-      .setOrigin(0, 0)
+      .setOrigin(0.5, 0)
+    this.body = scene.add
+      .sprite(position[0], position[1], "turret")
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(1.7, 1.7)
+      .setRotation(sim.turrets.angle[this.index])
   }
 
   update(sim: Physics.Sim): void {
@@ -295,11 +295,17 @@ export class Game extends Phaser.Scene {
   }
 
   preload(): void {
+    this.load.image("barrel0", "barrel0.png")
+    this.load.image("barrel1", "barrel1.png")
+    this.load.image("barrel2", "barrel2.png")
+    this.load.image("barrel3", "barrel3.png")
     this.load.image("bomb", "bomb.png")
     this.load.image("factory", "factory.png")
     this.load.json(this.levelKey!, `levels/${this.config!.level}.json`)
     this.load.image("ship", "ship.png")
     this.load.image("smoke", "smoke.png")
+    this.load.image("turret", "turret.png")
+
     this.load.audio("explosion", "explosion.mp3")
   }
 

@@ -81,7 +81,7 @@ export const S = {
   turretRotationRate: [0.5, 0.5, 1.0, 10.0],
   bulletSpeed: [15, 20, 20, 30],
   turretReloadTime: 0.75,
-  turretLength: 1.75,
+  turretLength: 1.8,
   bulletRange: 80,
   maxBullets: 100,
 }
