@@ -9,7 +9,7 @@ export const S = {
   fov: 75,
   bulletRadius: 0.2,
   factoryWidth: 7,
-  friendlyAlpha: 0.4,
+  friendlyTint: 0xff666666,
   playerLives: 4,
 }
 
@@ -32,12 +32,13 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
         .setOrigin(0.5, 0.5)
         .setDisplaySize(Physics.S.shipSize, Physics.S.shipSize)
         .setFlipY(true)
-        .setAlpha(this.index === 0 ? 1 : S.friendlyAlpha),
+        .setTint(this.index === 0 ? 0xffffffff : S.friendlyTint),
     )
     this.burnLeft = this.#addBurner("left")
     this.burnRight = this.#addBurner("right")
     this.burnRetro = this.#addBurner("retro")
     this.update(sim)
+    this.setDepth(-this.index)
   }
 
   #addBurner(
@@ -55,7 +56,8 @@ class Ship extends Phaser.GameObjects.Container implements SimUpdate {
       speed: 15,
       blendMode: "ADD",
       frequency: 15,
-      alpha: this.index === 0 ? 1 : S.friendlyAlpha ** 2,
+      tint: this.index === 0 ? 0xffffffff : 0xff222222,
+      alpha: 0.5,
     })
     this.add(emitter)
     return emitter
@@ -185,7 +187,7 @@ class Bombs implements SimUpdate {
       const velocity = sim.bombs.velocity[i]
       this.bombs[i]
         .setVisible(0 < sim.bombs.timeToLive[i])
-        .setAlpha(sim.bombs.owner[i] === 0 ? 1.0 : S.friendlyAlpha)
+        .setTint(sim.bombs.owner[i] === 0 ? 0xffffffff : S.friendlyTint)
         .setPosition(position[0], position[1])
         .setRotation(Math.atan2(velocity[0], -velocity[1]))
     }
@@ -198,12 +200,12 @@ class Explosions {
   update(scene: Phaser.Scene, explosions: Physics.Vec2[]): void {
     const config = {
       blendMode: "ADD",
-      lifespan: 500,
-      speed: 11,
-      frequency: 1,
-      duration: 350,
-      scale: { start: 0.01, end: 0.06, ease: "cube.out" },
-      alpha: { start: 0.4, end: 0, ease: "cube.out" },
+      lifespan: 400,
+      speed: 10,
+      frequency: 5,
+      duration: 200,
+      scale: { start: 0.02, end: 0.04, ease: "cube.out" },
+      alpha: { start: 1.0, end: 0.0, ease: "cube.out" },
     }
     const finishedEmitters = this.emitters.filter(
       (e) =>

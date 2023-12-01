@@ -58,7 +58,7 @@ export function rotateTowards(
 // Main logic
 
 export const S = {
-  dt: 1 / 100,
+  dt: 1 / 1000,
   // Ship
   G: 10,
   thrust: 40,
