@@ -1,6 +1,6 @@
-# Jam '23
+# TINY
 
-TBC!
+A game about flying spaceships and dropping things, with the help of TINY, a scripted friendly AI.
 
 Development:
 
