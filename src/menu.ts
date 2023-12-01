@@ -1,6 +1,6 @@
 import * as Phaser from "phaser"
 import type * as Game from "./game"
-import { LEVELS } from "./story"
+import { LEVELS, FINAL_SCREEN } from "./story"
 import { setLayoutFn } from "./lib/util"
 
 const S = {
@@ -206,14 +206,6 @@ export class Freeplay extends BaseMenu {
 
 // Story
 
-const FINISHED = {
-  title: "Congratulations!",
-  text:
-    "You've done it. Not just you, of course." +
-    "\nBut well done anyway." +
-    "\nTake the weekend off, you deserve it!",
-}
-
 export class Story extends BaseMenu {
   index?: number = 0
 
@@ -260,11 +252,11 @@ export class Story extends BaseMenu {
       this.index! += 1
       if (this.index! < LEVELS.length) {
         const level = LEVELS[this.index!]
-        title.setText(level.title)
+        title.setText(`${level.title} [${this.index! + 1}/${LEVELS.length}]`)
         body.setText((level.text ?? "").replaceAll("\n", "\n\n"))
       } else {
-        title.setText(FINISHED.title)
-        body.setText(FINISHED.text)
+        title.setText(FINAL_SCREEN.title)
+        body.setText(FINAL_SCREEN.text)
       }
     }
     updateContents()
@@ -277,7 +269,7 @@ export class Story extends BaseMenu {
       const pad = 0.05 * Math.min(camera.displayWidth, camera.displayHeight)
       title.setPosition(pad, pad)
       body.setPosition(pad, 2 * pad + title.displayHeight)
-      continueButton.setPosition(pad, body.y + body.displayHeight + pad)
+      continueButton.setPosition(pad, camera.displayHeight - 2 * pad)
     })
     super.create()
   }
